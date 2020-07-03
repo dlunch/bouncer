@@ -6,7 +6,9 @@ use std::error::Error;
 use clap::{App, Arg};
 
 use client::Client;
+use server::{Server, ServerEventListener};
 
+#[allow(unused_variables)]
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     pretty_env_logger::init();
@@ -20,8 +22,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let host = matches.value_of("host").unwrap().to_owned();
     let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
 
-    #[allow(unused_variables)]
     let client = Client::new(host, port);
+
+    struct EventListener {}
+    impl ServerEventListener for EventListener {
+        fn on_message<'a>(&self, sender: &'a str, message: &'a str) {}
+    }
+
+    let listener = EventListener {};
+    let server = Server::new(6667, Box::new(listener));
 
     Ok(())
 }
