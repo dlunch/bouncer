@@ -1,8 +1,11 @@
-use std::{default::Default, error::Error};
+mod client;
+mod server;
+
+use std::error::Error;
 
 use clap::{App, Arg};
-use futures::StreamExt;
-use irc::client::prelude::{Client, Command, Config};
+
+use client::Client;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -14,30 +17,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .arg(Arg::with_name("port").required(true))
         .get_matches();
 
-    let host = matches.value_of("host").unwrap();
+    let host = matches.value_of("host").unwrap().to_owned();
     let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
 
-    let config = Config {
-        nickname: Some("test".to_owned()),
-        server: Some(host.to_owned()),
-        port: Some(port),
-        channels: vec!["#testtesttest".to_owned()],
-        use_tls: Some(false),
-        ..Config::default()
-    };
-
-    let mut client = Client::from_config(config).await?;
-    client.identify()?;
-
-    let mut stream = client.stream()?;
-    while let Some(message) = stream.next().await.transpose()? {
-        if let Command::PRIVMSG(channel, message) = message.command {
-            if message.contains(&*client.current_nickname()) {
-                // send_privmsg comes from ClientExt
-                client.send_privmsg(&channel, "beep boop").unwrap();
-            }
-        }
-    }
+    #[allow(unused_variables)]
+    let client = Client::new(host, port);
 
     Ok(())
 }
