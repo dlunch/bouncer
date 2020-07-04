@@ -5,7 +5,7 @@ use std::error::Error;
 
 use clap::{App, Arg};
 
-use client::Client;
+use client::{Client, ClientEventListener};
 use server::{Server, ServerEventListener};
 
 #[allow(unused_variables)]
@@ -22,15 +22,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let host = matches.value_of("host").unwrap().to_owned();
     let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
 
-    let client = Client::new(host, port);
-
     struct EventListener {}
     impl ServerEventListener for EventListener {
         fn on_message<'a>(&self, sender: &'a str, message: &'a str) {}
     }
+    impl ClientEventListener for EventListener {
+        fn on_message<'a>(&self, sender: &'a str, message: &'a str) {}
+    }
 
-    let listener = EventListener {};
-    let server = Server::new(6667, Box::new(listener));
+    let client = Client::new(host, port, Box::new(EventListener {}));
+    let server = Server::new(6667, Box::new(EventListener {}));
 
     Ok(())
 }
