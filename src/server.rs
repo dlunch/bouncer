@@ -17,7 +17,6 @@ use futures::{
 };
 use irc::proto::Message;
 
-#[allow(dead_code)]
 pub struct Server {
     accept_receiver: UnboundedReceiver<TcpStream>,
     accepter_join_handle: Option<JoinHandle<()>>,
@@ -52,7 +51,6 @@ impl Server {
     pub async fn next_message(&mut self) -> io::Result<Message> {
         let accept_future = self.accept_receiver.next();
 
-        #[allow(unused_variables)]
         if let Poll::Ready(x) = poll!(accept_future) {
             let stream = x.unwrap();
             self.streams.push((BufReader::new(stream.clone()), stream));
