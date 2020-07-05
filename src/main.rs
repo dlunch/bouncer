@@ -8,7 +8,6 @@ use clap::{App, Arg};
 
 use bouncer::Bouncer;
 
-#[allow(unused_variables)]
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     pretty_env_logger::init();
