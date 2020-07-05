@@ -48,7 +48,8 @@ impl Server {
 
         #[allow(unused_variables)]
         if let Poll::Ready(x) = poll!(accept_future) {
-            let stream = x;
+            let stream = x.unwrap();
+            self.streams.push((BufReader::new(stream.clone()), stream));
         }
 
         let reader = self.streams.iter_mut().map(|x| {
