@@ -1,16 +1,16 @@
 use std::net::TcpListener;
 
-use async_std::{
+use async_std::net::{Ipv4Addr, TcpStream};
+use futures::{
     io,
-    io::BufReader,
-    net::{Ipv4Addr, TcpStream},
+    io::{AsyncBufReadExt, BufReader, Lines},
+    stream, StreamExt,
 };
-use futures::{future::select_all, io::AsyncBufReadExt, FutureExt};
 use irc::proto::Message;
 
 pub struct Server {
     listener: TcpListener,
-    streams: Vec<(BufReader<TcpStream>, TcpStream)>,
+    streams: Vec<(Lines<BufReader<TcpStream>>, TcpStream)>,
 }
 
 impl Server {
@@ -27,20 +27,13 @@ impl Server {
     pub async fn next_message(&mut self) -> io::Result<Message> {
         if let Ok((stream, _)) = self.listener.accept() {
             let stream = TcpStream::from(stream);
-            self.streams.push((BufReader::new(stream.clone()), stream));
+            let bufreader = BufReader::new(stream.clone());
+            let lines = bufreader.lines();
+            self.streams.push((lines, stream));
         }
 
-        let reader = self.streams.iter_mut().map(|x| {
-            async move {
-                let mut result = String::new();
-                x.0.read_line(&mut result).await.unwrap();
-
-                result
-            }
-            .boxed()
-        });
-
-        let (result, _, _) = select_all(reader).await;
+        let mut stream = stream::select_all(self.streams.iter_mut().map(|x| &mut x.0));
+        let result = stream.next().await.unwrap()?;
 
         Ok(result.parse::<Message>().unwrap())
     }
