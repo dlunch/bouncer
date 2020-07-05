@@ -1,3 +1,5 @@
+use std::ops::Drop;
+
 use async_std::{
     io,
     io::BufReader,
@@ -18,7 +20,7 @@ use irc::proto::Message;
 #[allow(dead_code)]
 pub struct Server {
     accept_receiver: UnboundedReceiver<TcpStream>,
-    accepter_join_handle: JoinHandle<()>,
+    accepter_join_handle: Option<JoinHandle<()>>,
     streams: Vec<(BufReader<TcpStream>, TcpStream)>,
 }
 
@@ -27,18 +29,22 @@ impl Server {
         let (sender, accept_receiver) = mpsc::unbounded();
 
         let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
-        let accepter_join_handle = task::spawn(async move {
+        let join_handle = task::spawn(async move {
             let mut incoming = listener.incoming();
 
             while let Some(stream) = incoming.next().await {
                 let stream = stream.unwrap();
-                sender.unbounded_send(stream).unwrap();
+                let result = sender.unbounded_send(stream);
+
+                if result.is_err() {
+                    break;
+                }
             }
         });
 
         Ok(Self {
             accept_receiver,
-            accepter_join_handle,
+            accepter_join_handle: Some(join_handle),
             streams: Vec::new(),
         })
     }
@@ -65,5 +71,12 @@ impl Server {
         let (result, _, _) = select_all(reader).await;
 
         Ok(result.parse::<Message>().unwrap())
+    }
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        let join_handle = self.accepter_join_handle.take().unwrap();
+        task::spawn(async { join_handle.cancel().await });
     }
 }
