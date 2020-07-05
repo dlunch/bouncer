@@ -1,25 +1,19 @@
 use std::default::Default;
 
-use async_std::task;
-use async_std::task::JoinHandle;
 use futures::StreamExt;
 use irc::{
-    client::{data::config::Config, Client as IRCClient},
+    client::{data::config::Config, Client as IRCClient, ClientStream},
     error::Result,
-    proto::Command,
+    proto::Message,
 };
 
-pub trait ClientEventListener: Sync + Send {
-    fn on_message<'a>(&self, sender: &'a str, message: &'a str);
-}
-
-#[allow(dead_code)]
 pub struct Client {
-    join_handle: JoinHandle<()>,
+    client: IRCClient,
+    stream: ClientStream,
 }
 
 impl Client {
-    pub async fn new(host: String, port: u16, listener: Box<dyn ClientEventListener>) -> Self {
+    pub async fn new(host: String, port: u16) -> Result<Self> {
         let config = Config {
             nickname: Some("test".to_owned()),
             server: Some(host),
@@ -29,28 +23,18 @@ impl Client {
             ..Config::default()
         };
 
-        let join_handle = task::spawn(async move {
-            Self::start(config, listener).await.unwrap();
-        });
-
-        Self { join_handle }
-    }
-
-    #[allow(unused_variables)]
-    async fn start(config: Config, listener: Box<dyn ClientEventListener>) -> Result<()> {
         let mut client = IRCClient::from_config(config).await?;
         client.identify()?;
+        let stream = client.stream()?;
 
-        let mut stream = client.stream()?;
-        while let Some(message) = stream.next().await.transpose()? {
-            if let Command::PRIVMSG(channel, message) = message.command {
-                if message.contains(&*client.current_nickname()) {
-                    // send_privmsg comes from ClientExt
-                    client.send_privmsg(&channel, "beep boop").unwrap();
-                }
-            }
-        }
+        Ok(Self { client, stream })
+    }
 
-        Ok(())
+    pub async fn next_message(&mut self) -> Result<Message> {
+        self.stream.next().await.unwrap()
+    }
+
+    pub fn send_message(&self, message: Message) -> Result<()> {
+        self.client.send(message)
     }
 }
