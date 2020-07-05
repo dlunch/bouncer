@@ -1,37 +1,46 @@
-use async_std::io;
-use async_std::net::{Ipv4Addr, TcpListener};
-use async_std::task;
-use async_std::task::JoinHandle;
-use futures::StreamExt;
 
-pub trait ServerEventListener: Sync + Send {
-    fn on_message<'a>(&self, sender: &'a str, message: &'a str);
-}
+use async_std::{io, io::BufReader, net::{Ipv4Addr, TcpListener, TcpStream}};
+use futures::{io::AsyncBufReadExt, FutureExt, poll, task::Poll, pin_mut, future::select_all};
+use irc::proto::Message;
 
 #[allow(dead_code)]
 pub struct Server {
-    join_handle: JoinHandle<()>,
+    listener: TcpListener,
+    streams: Vec<TcpStream>,
 }
 
 impl Server {
-    pub fn new(port: u16, listener: Box<dyn ServerEventListener>) -> Self {
-        let join_handle = task::spawn(async move { Self::start(port, listener).await.unwrap() });
+    pub async fn new(port: u16) -> io::Result<Self> {
+        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
-        Self { join_handle }
+        Ok(Self {
+            listener,
+            streams: Vec::new(),
+        })
     }
 
-    #[allow(unused_variables)]
-    async fn start(port: u16, listener: Box<dyn ServerEventListener>) -> io::Result<()> {
-        let tcp_listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
+    pub async fn next_message(&mut self) -> io::Result<Message> {
+        let accept_future = self.listener.accept();
+        pin_mut!(accept_future);
 
-        let mut incoming = tcp_listener.incoming();
-
-        while let Some(stream) = incoming.next().await {
-            let stream = stream?;
-            let (reader, writer) = &mut (&stream, &stream);
-            io::copy(reader, writer).await?;
+        #[allow(unused_variables)]
+        if let Poll::Ready(x) = poll!(accept_future) {
+            // TODO accept
         }
 
-        Ok(())
+        let reader = self.streams.iter().map(|x| {
+            async move {
+                let mut reader = BufReader::new(x);
+                let mut result = String::new();
+                reader.read_line(&mut result).await.unwrap();
+
+                result
+            }
+            .boxed()
+        });
+
+        let (result, _, _) = select_all(reader).await;
+
+        Ok(result.parse::<Message>().unwrap())
     }
 }
