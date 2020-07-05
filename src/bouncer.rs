@@ -1,4 +1,3 @@
-
 use futures::{select, FutureExt};
 use irc::proto::Message;
 
@@ -15,8 +14,7 @@ impl Bouncer {
         let client = Client::new(host, port).await.unwrap();
         let server = Server::new(6667).await.unwrap();
 
-        Self {client, server}
-
+        Self { client, server }
     }
 
     pub async fn run(&mut self) {
