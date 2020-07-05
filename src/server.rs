@@ -1,58 +1,32 @@
-use std::ops::Drop;
+use std::net::TcpListener;
 
 use async_std::{
     io,
     io::BufReader,
-    net::{Ipv4Addr, TcpListener, TcpStream},
-    task,
-    task::JoinHandle,
+    net::{Ipv4Addr, TcpStream},
 };
-use futures::{
-    channel::{mpsc, mpsc::UnboundedReceiver},
-    future::select_all,
-    io::AsyncBufReadExt,
-    poll,
-    task::Poll,
-    FutureExt, StreamExt,
-};
+use futures::{future::select_all, io::AsyncBufReadExt, FutureExt};
 use irc::proto::Message;
 
 pub struct Server {
-    accept_receiver: UnboundedReceiver<TcpStream>,
-    accepter_join_handle: Option<JoinHandle<()>>,
+    listener: TcpListener,
     streams: Vec<(BufReader<TcpStream>, TcpStream)>,
 }
 
 impl Server {
     pub async fn new(port: u16) -> io::Result<Self> {
-        let (sender, accept_receiver) = mpsc::unbounded();
-
-        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
-        let join_handle = task::spawn(async move {
-            let mut incoming = listener.incoming();
-
-            while let Some(stream) = incoming.next().await {
-                let stream = stream.unwrap();
-                let result = sender.unbounded_send(stream);
-
-                if result.is_err() {
-                    break;
-                }
-            }
-        });
+        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port))?;
+        listener.set_nonblocking(true)?;
 
         Ok(Self {
-            accept_receiver,
-            accepter_join_handle: Some(join_handle),
+            listener,
             streams: Vec::new(),
         })
     }
 
     pub async fn next_message(&mut self) -> io::Result<Message> {
-        let accept_future = self.accept_receiver.next();
-
-        if let Poll::Ready(x) = poll!(accept_future) {
-            let stream = x.unwrap();
+        if let Ok((stream, _)) = self.listener.accept() {
+            let stream = TcpStream::from(stream);
             self.streams.push((BufReader::new(stream.clone()), stream));
         }
 
@@ -69,12 +43,5 @@ impl Server {
         let (result, _, _) = select_all(reader).await;
 
         Ok(result.parse::<Message>().unwrap())
-    }
-}
-
-impl Drop for Server {
-    fn drop(&mut self) {
-        let join_handle = self.accepter_join_handle.take().unwrap();
-        task::spawn(async { join_handle.cancel().await });
     }
 }
