@@ -10,4 +10,4 @@ irc = { version = "^0.14" }
 log = { version = "^0.4" }
 futures = { version = "^0.3" }
 pretty_env_logger = { version = "^0.4" }
-async-std = { version = "^1.6", features = ["tokio02", "attributes"] }
+async-std = { version = "^1.6", features = ["tokio02", "attributes", "unstable"] }

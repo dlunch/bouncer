@@ -1,40 +1,64 @@
-use std::net::TcpListener;
-
-use async_std::net::{Ipv4Addr, TcpStream};
+use async_std::{
+    net::{Ipv4Addr, TcpListener, TcpStream},
+    sync::{channel, Receiver, Sender},
+    task,
+};
 use futures::{
     io,
-    io::{AsyncBufReadExt, BufReader, Lines},
-    stream, StreamExt,
+    io::{AsyncBufReadExt, BufReader},
+    StreamExt,
 };
 use irc::proto::Message;
 
+type ReadMessage = (String, TcpStream);
+
 pub struct Server {
-    listener: TcpListener,
-    streams: Vec<(Lines<BufReader<TcpStream>>, TcpStream)>,
+    receiver: Receiver<ReadMessage>,
 }
 
 impl Server {
     pub async fn new(port: u16) -> io::Result<Self> {
-        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port))?;
-        listener.set_nonblocking(true)?;
+        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
-        Ok(Self {
-            listener,
-            streams: Vec::new(),
-        })
+        let (sender, receiver) = channel(10);
+        task::spawn(async move {
+            Self::accept_loop(listener, sender).await.unwrap();
+        });
+
+        Ok(Self { receiver })
     }
 
-    pub async fn next_message(&mut self) -> io::Result<Message> {
-        if let Ok((stream, _)) = self.listener.accept() {
-            let stream = TcpStream::from(stream);
-            let bufreader = BufReader::new(stream.clone());
-            let lines = bufreader.lines();
-            self.streams.push((lines, stream));
+    async fn accept_loop(listener: TcpListener, sender: Sender<ReadMessage>) -> io::Result<()> {
+        let mut incoming = listener.incoming();
+
+        while let Some(stream) = incoming.next().await {
+            let stream = stream?;
+            let sender = sender.clone();
+            task::spawn(async move {
+                Self::read_loop(stream, sender).await.unwrap();
+            });
         }
 
-        let mut stream = stream::select_all(self.streams.iter_mut().map(|x| &mut x.0));
-        let result = stream.next().await.unwrap()?;
+        Ok(())
+    }
 
-        Ok(result.parse::<Message>().unwrap())
+    async fn read_loop(stream: TcpStream, sender: Sender<ReadMessage>) -> io::Result<()> {
+        let reader = BufReader::new(&stream);
+        let mut lines = reader.lines();
+        while let Some(line) = lines.next().await {
+            sender.send((line?, stream.clone())).await;
+        }
+
+        Ok(())
+    }
+
+    pub async fn next_message(&mut self) -> Option<Message> {
+        if self.receiver.is_empty() {
+            None
+        } else {
+            let message = self.receiver.recv().await.unwrap();
+
+            Some(message.0.parse::<Message>().unwrap())
+        }
     }
 }
