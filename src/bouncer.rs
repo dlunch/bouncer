@@ -1,3 +1,6 @@
+use std::time::Duration;
+
+use async_std::task;
 use futures::{select, FutureExt};
 use irc::proto::Message;
 
@@ -21,7 +24,13 @@ impl Bouncer {
         loop {
             select! {
                 client_message = self.client.next_message().fuse() => self.handle_client_message(client_message.unwrap()).await,
-                server_message = self.server.next_message().fuse() => self.handle_server_message(server_message.unwrap()).await,
+                server_message = self.server.next_message().fuse() => {
+                    if let Some(x) = server_message {
+                        self.handle_server_message(x).await;
+                    } else {
+                        task::sleep(Duration::from_millis(10)).await;
+                    }
+                },
             };
         }
     }
