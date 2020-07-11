@@ -6,6 +6,7 @@ use async_std::{
 use futures::{
     io,
     io::{AsyncBufReadExt, BufReader},
+    stream::Stream,
     StreamExt,
 };
 use irc::proto::Message;
@@ -52,13 +53,7 @@ impl Server {
         Ok(())
     }
 
-    pub async fn next_message(&mut self) -> Option<Message> {
-        if self.receiver.is_empty() {
-            None
-        } else {
-            let message = self.receiver.recv().await.unwrap();
-
-            Some(message.0.parse::<Message>().unwrap())
-        }
+    pub fn stream(&mut self) -> impl Stream<Item = Message> {
+        self.receiver.clone().map(|x| x.0.parse::<Message>().unwrap())
     }
 }

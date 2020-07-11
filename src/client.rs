@@ -1,6 +1,5 @@
 use std::default::Default;
 
-use futures::StreamExt;
 use irc::{
     client::{data::config::Config, Client as IRCClient, ClientStream},
     error::Result,
@@ -9,7 +8,6 @@ use irc::{
 
 pub struct Client {
     client: IRCClient,
-    stream: ClientStream,
 }
 
 impl Client {
@@ -23,15 +21,14 @@ impl Client {
             ..Config::default()
         };
 
-        let mut client = IRCClient::from_config(config).await?;
+        let client = IRCClient::from_config(config).await?;
         client.identify()?;
-        let stream = client.stream()?;
 
-        Ok(Self { client, stream })
+        Ok(Self { client })
     }
 
-    pub async fn next_message(&mut self) -> Result<Message> {
-        self.stream.next().await.unwrap()
+    pub fn stream(&mut self) -> Result<ClientStream> {
+        self.client.stream()
     }
 
     pub fn send_message(&self, message: Message) -> Result<()> {
