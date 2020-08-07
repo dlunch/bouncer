@@ -12,6 +12,7 @@ use futures::{
     StreamExt,
 };
 use irc::proto::Message;
+use log::debug;
 
 type ReadMessage = (String, TcpStream);
 
@@ -97,10 +98,17 @@ impl Server {
     }
 
     pub fn stream(&mut self) -> impl Stream<Item = Message> {
-        self.receiver.clone().map(|x| x.0.parse::<Message>().unwrap())
+        self.receiver.clone().map(|x| {
+            let message = x.0.parse::<Message>().unwrap();
+            debug!("From Client: {}", message);
+
+            message
+        })
     }
 
     pub async fn send_message(&self, message: Message) -> io::Result<()> {
+        debug!("To Clients: {}", message);
+
         let mut streams = self.streams.lock().await;
 
         for stream in streams.iter_mut() {
