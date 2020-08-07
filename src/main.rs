@@ -10,7 +10,10 @@ use bouncer::Bouncer;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    pretty_env_logger::init();
+    pretty_env_logger::formatted_timed_builder()
+        .filter(Some("bouncer"), log::LevelFilter::Debug)
+        .filter(Some("irc"), log::LevelFilter::Trace)
+        .init();
 
     let matches = App::new("bouncer")
         .version("1.0")

@@ -1,7 +1,8 @@
 use std::default::Default;
 
+use futures::Stream;
 use irc::{
-    client::{data::config::Config, Client as IRCClient, ClientStream},
+    client::{data::config::Config, Client as IRCClient},
     error::Result,
     proto::Message,
 };
@@ -27,7 +28,7 @@ impl Client {
         Ok(Self { client })
     }
 
-    pub fn stream(&mut self) -> Result<ClientStream> {
+    pub fn stream(&mut self) -> Result<impl Stream<Item = Result<Message>>> {
         self.client.stream()
     }
 
