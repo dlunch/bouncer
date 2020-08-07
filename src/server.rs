@@ -106,8 +106,8 @@ impl Server {
         })
     }
 
-    pub async fn send_message(&self, message: Message) -> io::Result<()> {
-        debug!("To Clients: {}", message);
+    pub async fn broadcast(&self, message: Message) -> io::Result<()> {
+        debug!("Broadcast: {}", message);
 
         let mut streams = self.streams.lock().await;
 
