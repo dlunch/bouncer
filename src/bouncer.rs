@@ -5,8 +5,8 @@ use crate::irc::Client;
 use crate::irc::Server;
 
 enum Message {
-    ServerMessage(irc::proto::Message),
-    ClientMessage(irc::proto::Message),
+    ServerMessage(crate::irc::Message),
+    ClientMessage(crate::irc::Message),
 }
 
 pub struct Bouncer {}
@@ -28,7 +28,7 @@ impl Bouncer {
                 };
 
                 match res {
-                    Message::ServerMessage(message) => client.send_message(message).unwrap(),
+                    Message::ServerMessage(message) => client.send_message(message).await.unwrap(),
                     Message::ClientMessage(message) => client_sender.send(message).await,
                 }
             }
