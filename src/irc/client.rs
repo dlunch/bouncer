@@ -1,38 +1,40 @@
-use std::default::Default;
-
-use futures::Stream;
-use irc::{
-    client::{data::config::Config, Client as IRCClient},
-    error::Result,
-    proto::Message,
+use async_std::{
+    io::Result,
+    net::{TcpStream, ToSocketAddrs},
 };
+use futures::{io::BufReader, AsyncBufReadExt, AsyncWriteExt, Stream, StreamExt};
+use log::debug;
+
+use super::message::Message;
 
 pub struct Client {
-    client: IRCClient,
+    stream: TcpStream,
 }
 
 impl Client {
     pub async fn new(host: String, port: u16) -> Result<Self> {
-        let config = Config {
-            nickname: Some("test".to_owned()),
-            server: Some(host),
-            port: Some(port),
-            channels: vec!["#testtesttest".to_owned()],
-            use_tls: Some(false),
-            ..Config::default()
-        };
+        let addr = (host.as_ref(), port).to_socket_addrs().await?.next().unwrap();
 
-        let client = IRCClient::from_config(config).await?;
-        client.identify()?;
+        let stream = TcpStream::connect(addr).await?;
 
-        Ok(Self { client })
+        Ok(Self { stream })
     }
 
-    pub fn stream(&mut self) -> Result<impl Stream<Item = Result<Message>>> {
-        self.client.stream()
+    pub fn stream(&self) -> Result<impl Stream<Item = Result<Message>>> {
+        let reader = BufReader::new(self.stream.clone());
+
+        Ok(reader.lines().map(|x| {
+            let message = Message::new(x?);
+            debug!("From Origin: {}", message);
+
+            Ok(message)
+        }))
     }
 
-    pub fn send_message(&self, message: Message) -> Result<()> {
-        self.client.send(message)
+    pub async fn send_message(&mut self, message: Message) -> Result<()> {
+        debug!("To Origin: {}", message);
+        self.stream.write(message.raw()).await?;
+
+        Ok(())
     }
 }
