@@ -17,7 +17,7 @@ impl Bouncer {
         let (client_sender, client_receiver) = channel(10);
 
         let client_join_handle = task::spawn(async move {
-            let mut client = Client::new(host, port).await.unwrap();
+            let client = Client::new(host, port).await.unwrap();
             let mut client_stream = client.stream().unwrap().fuse();
             let mut server_receiver = server_receiver.fuse();
 
