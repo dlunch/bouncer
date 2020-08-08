@@ -11,9 +11,8 @@ use futures::{
     stream::Stream,
     StreamExt,
 };
+use irc_proto::Message;
 use log::debug;
-
-use super::message::Message;
 
 type ReadMessage = (String, TcpStream);
 
@@ -100,7 +99,7 @@ impl Server {
 
     pub fn stream(&mut self) -> impl Stream<Item = Message> {
         self.receiver.clone().map(|x| {
-            let message = Message::new(x.0);
+            let message = x.0.parse::<Message>().unwrap();
             debug!("From Client: {}", message);
 
             message

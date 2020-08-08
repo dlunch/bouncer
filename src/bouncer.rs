@@ -5,8 +5,8 @@ use crate::irc::Client;
 use crate::irc::Server;
 
 enum Message {
-    ServerMessage(crate::irc::Message),
-    ClientMessage(crate::irc::Message),
+    ServerMessage(irc_proto::Message),
+    ClientMessage(irc_proto::Message),
 }
 
 pub struct Bouncer {}
