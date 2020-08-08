@@ -1,8 +1,8 @@
 use async_std::{sync::channel, task};
 use futures::{join, select, StreamExt};
 
-use crate::client::Client;
-use crate::server::Server;
+use crate::irc::Client;
+use crate::irc::Server;
 
 enum Message {
     ServerMessage(irc::proto::Message),
