@@ -28,7 +28,7 @@ impl Bouncer {
                 };
 
                 match res {
-                    Message::ServerMessage(message) => client.send_message(message).await.unwrap(),
+                    Message::ServerMessage(message) => client.send_message(message).unwrap(),
                     Message::ClientMessage(message) => client_sender.send(message).await,
                 }
             }

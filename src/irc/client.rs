@@ -6,7 +6,7 @@ use async_std::{
     task,
 };
 use futures::{io::BufReader, AsyncBufReadExt, AsyncWriteExt, Stream, StreamExt};
-use irc_proto::{Command, Message};
+use irc_proto::{Command, Message, Response};
 use log::debug;
 
 struct Transport {
@@ -16,16 +16,9 @@ struct Transport {
 impl Transport {
     pub async fn new(host: String, port: u16) -> Result<Self> {
         let addr = (host.as_ref(), port).to_socket_addrs().await?.next().unwrap();
-
         let stream = TcpStream::connect(addr).await?;
-        let result = Self { stream };
 
-        result
-            .send_message(Message::from(Command::USER("test".to_owned(), "0".to_owned(), "test".to_owned())))
-            .await?;
-        result.send_message(Message::from(Command::NICK("testtest".to_owned()))).await?;
-
-        Ok(result)
+        Ok(Self { stream })
     }
 
     pub fn stream(&self) -> Result<impl Stream<Item = Result<Message>>> {
@@ -49,13 +42,18 @@ impl Transport {
     }
 }
 
-pub struct Client {
+pub struct ClientImpl {
     transport: Arc<Transport>,
 }
 
-impl Client {
+impl ClientImpl {
     pub async fn new(host: String, port: u16) -> Result<Self> {
         let transport = Transport::new(host, port).await?;
+
+        transport
+            .send_message(Message::from(Command::USER("test".to_owned(), "0".to_owned(), "test".to_owned())))
+            .await?;
+        transport.send_message(Message::from(Command::NICK("testtest".to_owned()))).await?;
 
         Ok(Self {
             transport: Arc::new(transport),
@@ -63,32 +61,62 @@ impl Client {
     }
 
     pub fn stream(&self) -> Result<impl Stream<Item = Result<Message>>> {
+        Ok(self.transport.stream()?)
+    }
+
+    pub fn send_message(&self, message: Message) -> Result<()> {
         let transport = self.transport.clone();
 
-        Ok(self.transport.stream()?.map(move |x| {
-            let transport = transport.clone();
+        task::spawn(async move { transport.send_message(message).await.unwrap() });
 
+        Ok(())
+    }
+
+    fn on_connected(&self) -> Result<()> {
+        Ok(())
+    }
+
+    fn handle_message(&self, message: &Message) -> Result<()> {
+        match &message.command {
+            Command::PING(x, y) => {
+                let response = Message::from(Command::PONG(x.clone(), y.clone()));
+
+                self.send_message(response)?;
+            }
+            Command::Response(response, _) => match response {
+                Response::RPL_ENDOFMOTD | Response::ERR_NOMOTD => self.on_connected()?,
+                _ => {}
+            },
+            _ => {}
+        }
+
+        Ok(())
+    }
+}
+
+pub struct Client {
+    client: Arc<ClientImpl>,
+}
+
+impl Client {
+    pub async fn new(host: String, port: u16) -> Result<Self> {
+        let client = Arc::new(ClientImpl::new(host, port).await?);
+
+        Ok(Self { client })
+    }
+
+    pub fn stream(&self) -> Result<impl Stream<Item = Result<Message>>> {
+        let client = self.client.clone();
+
+        Ok(self.client.stream()?.map(move |x| {
             let message = x?;
-            let message_clone = message.clone();
-            task::spawn(async move {
-                Self::handle_message(transport, message_clone).await.unwrap();
-            });
+            client.handle_message(&message)?;
 
             Ok(message)
         }))
     }
 
-    pub async fn send_message(&self, message: Message) -> Result<()> {
-        self.transport.send_message(message).await
-    }
-
-    async fn handle_message(transport: Arc<Transport>, message: Message) -> Result<()> {
-        if let Command::PING(x, y) = &message.command {
-            let response = Message::from(Command::PONG(x.clone(), y.clone()));
-
-            transport.send_message(response).await?;
-        }
-
-        Ok(())
+    pub fn send_message(&self, message: Message) -> Result<()> {
+        self.client.send_message(message)
     }
 }
