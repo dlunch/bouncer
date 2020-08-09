@@ -32,7 +32,7 @@ impl ClientImpl {
         })
     }
 
-    pub fn stream(&self) -> impl Stream<Item = Result<Message>> {
+    pub fn stream(&self) -> impl Stream<Item = Message> {
         self.transport.stream()
     }
 
