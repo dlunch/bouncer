@@ -18,10 +18,10 @@ impl Server {
     }
 
     pub fn stream(&self) -> impl Stream<Item = Message> {
-        let server_clone = self.server.clone();
+        let server = self.server.clone();
 
         self.server.stream().map(move |(message, sender)| {
-            server_clone.handle_message(sender, &message).unwrap();
+            server.handle_message(sender, &message).unwrap();
 
             message
         })
