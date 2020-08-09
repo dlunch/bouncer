@@ -73,6 +73,8 @@ impl ClientImpl {
     }
 
     fn on_connected(&self) -> Result<()> {
+        self.send_message(Message::from(Command::JOIN("#testtesttest".to_owned(), None, None)))?;
+
         Ok(())
     }
 
