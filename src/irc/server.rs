@@ -3,7 +3,7 @@ mod server_impl;
 use std::sync::Arc;
 
 use async_std::io::Result;
-use futures::{stream::Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use irc_proto::Message;
 
 pub struct Server {

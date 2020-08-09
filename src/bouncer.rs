@@ -23,7 +23,7 @@ impl Bouncer {
 
             loop {
                 let res = select! {
-                    message = client_stream.next() => Message::ClientMessage(message.unwrap().unwrap()),
+                    message = client_stream.next() => Message::ClientMessage(message.unwrap()),
                     message = server_receiver.next() => Message::ServerMessage(message.unwrap()),
                 };
 

@@ -1,4 +1,3 @@
-
 use std::{collections::HashMap, sync::Arc};
 
 use async_std::{
@@ -84,8 +83,8 @@ impl ServerImpl {
         let index = transports.lock().await.insert(&transport);
 
         let mut stream = transport.stream();
-        while let Some(line) = stream.next().await {
-            sender.send((line?, transport.clone())).await;
+        while let Some(message) = stream.next().await {
+            sender.send((message, transport.clone())).await;
         }
 
         transports.lock().await.remove(index);

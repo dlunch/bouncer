@@ -17,14 +17,13 @@ impl Client {
         Ok(Self { client })
     }
 
-    pub fn stream(&self) -> impl Stream<Item = Result<Message>> {
+    pub fn stream(&self) -> impl Stream<Item = Message> {
         let client = self.client.clone();
 
-        self.client.stream().map(move |x| {
-            let message = x?;
-            client.handle_message(&message)?;
+        self.client.stream().map(move |message: Message| {
+            client.handle_message(&message).unwrap();
 
-            Ok(message)
+            message
         })
     }
 
