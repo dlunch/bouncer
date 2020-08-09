@@ -1,17 +1,17 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_std::{
+    io::Result,
     net::{Ipv4Addr, TcpListener, TcpStream},
     sync::{channel, Mutex, Receiver, Sender},
     task,
 };
 use futures::{
-    io,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     stream::Stream,
     StreamExt,
 };
-use irc_proto::Message;
+use irc_proto::{Command, Message};
 use log::debug;
 
 type ReadMessage = (String, TcpStream);
@@ -47,13 +47,13 @@ impl Streams {
     }
 }
 
-pub struct Server {
+struct ServerImpl {
     receiver: Receiver<ReadMessage>,
     streams: Arc<Mutex<Streams>>,
 }
 
-impl Server {
-    pub async fn new(port: u16) -> io::Result<Self> {
+impl ServerImpl {
+    pub async fn new(port: u16) -> Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
         let (sender, receiver) = channel(10);
@@ -67,7 +67,7 @@ impl Server {
         Ok(Self { receiver, streams })
     }
 
-    async fn accept_loop(listener: TcpListener, sender: Sender<ReadMessage>, streams: Arc<Mutex<Streams>>) -> io::Result<()> {
+    async fn accept_loop(listener: TcpListener, sender: Sender<ReadMessage>, streams: Arc<Mutex<Streams>>) -> Result<()> {
         let mut incoming = listener.incoming();
 
         while let Some(stream) = incoming.next().await {
@@ -83,7 +83,7 @@ impl Server {
         Ok(())
     }
 
-    async fn read_loop(stream: TcpStream, sender: Sender<ReadMessage>, streams: Arc<Mutex<Streams>>) -> io::Result<()> {
+    async fn read_loop(stream: TcpStream, sender: Sender<ReadMessage>, streams: Arc<Mutex<Streams>>) -> Result<()> {
         let index = streams.lock().await.insert(&stream);
 
         let reader = BufReader::new(&stream);
@@ -97,16 +97,16 @@ impl Server {
         Ok(())
     }
 
-    pub fn stream(&mut self) -> impl Stream<Item = Message> {
-        self.receiver.clone().map(|x| {
-            let message = x.0.parse::<Message>().unwrap();
+    pub fn stream(&self) -> impl Stream<Item = (Message, TcpStream)> {
+        self.receiver.clone().map(|(raw, sender)| {
+            let message = raw.parse::<Message>().unwrap();
             debug!("From Client: {}", message);
 
-            message
+            (message, sender)
         })
     }
 
-    pub async fn broadcast(&self, message: Message) -> io::Result<()> {
+    pub async fn broadcast(&self, message: Message) -> Result<()> {
         debug!("Broadcast: {}", message);
 
         let mut streams = self.streams.lock().await;
@@ -116,5 +116,47 @@ impl Server {
         }
 
         Ok(())
+    }
+
+    fn send_response(&self, mut receiver: TcpStream, message: Message) -> Result<()> {
+        task::spawn(async move { receiver.write(message.to_string().as_bytes()).await.unwrap() });
+
+        Ok(())
+    }
+
+    pub fn handle_message(&self, sender: TcpStream, message: &Message) -> Result<()> {
+        if let Command::PING(server1, server2) = &message.command {
+            let response = Message::from(Command::PONG(server1.clone(), server2.clone()));
+
+            self.send_response(sender, response).unwrap();
+        }
+
+        Ok(())
+    }
+}
+
+pub struct Server {
+    server: Arc<ServerImpl>,
+}
+
+impl Server {
+    pub async fn new(port: u16) -> Result<Self> {
+        let server = Arc::new(ServerImpl::new(port).await?);
+
+        Ok(Self { server })
+    }
+
+    pub fn stream(&self) -> impl Stream<Item = Message> {
+        let server_clone = self.server.clone();
+
+        self.server.stream().map(move |(message, sender)| {
+            server_clone.handle_message(sender, &message).unwrap();
+
+            message
+        })
+    }
+
+    pub async fn broadcast(&self, message: Message) -> Result<()> {
+        self.server.broadcast(message).await
     }
 }
