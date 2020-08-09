@@ -42,7 +42,7 @@ impl Transport {
     }
 }
 
-pub struct ClientImpl {
+struct ClientImpl {
     transport: Arc<Transport>,
 }
 
