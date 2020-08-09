@@ -30,24 +30,24 @@ mod client_impl {
             let transport = Transport::new(stream);
 
             transport
-                .send_message(Message::from(Command::USER("test".to_owned(), "0".to_owned(), "test".to_owned())))
+                .send_message(&Message::from(Command::USER("test".to_owned(), "0".to_owned(), "test".to_owned())))
                 .await?;
-            transport.send_message(Message::from(Command::NICK("testtest".to_owned()))).await?;
+            transport.send_message(&Message::from(Command::NICK("testtest".to_owned()))).await?;
 
             Ok(Self {
                 transport: Arc::new(transport),
             })
         }
 
-        pub fn stream(&self) -> Result<impl Stream<Item = Result<Message>>> {
-            Ok(self.transport.stream()?)
+        pub fn stream(&self) -> impl Stream<Item = Result<Message>> {
+            self.transport.stream()
         }
 
         pub fn send_message(&self, message: Message) -> Result<()> {
             debug!("To Origin: {}", message);
 
             let transport = self.transport.clone();
-            task::spawn(async move { transport.send_message(message).await.unwrap() });
+            task::spawn(async move { transport.send_message(&message).await.unwrap() });
 
             Ok(())
         }
@@ -90,15 +90,15 @@ impl Client {
         Ok(Self { client })
     }
 
-    pub fn stream(&self) -> Result<impl Stream<Item = Result<Message>>> {
+    pub fn stream(&self) -> impl Stream<Item = Result<Message>> {
         let client = self.client.clone();
 
-        Ok(self.client.stream()?.map(move |x| {
+        self.client.stream().map(move |x| {
             let message = x?;
             client.handle_message(&message)?;
 
             Ok(message)
-        }))
+        })
     }
 
     pub fn send_message(&self, message: Message) -> Result<()> {
