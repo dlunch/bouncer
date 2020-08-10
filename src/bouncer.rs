@@ -1,57 +1,78 @@
-use async_std::{sync::channel, task};
+use std::sync::Arc;
+
+use async_std::{
+    sync::{channel, Sender},
+    task,
+};
 use futures::{join, select, StreamExt};
+use irc_proto::{Command, Message};
 
 use crate::irc::Client;
 use crate::irc::Server;
 
-enum Message {
-    ServerMessage(irc_proto::Message),
-    ClientMessage(irc_proto::Message),
+enum BouncerMessage {
+    SinkMessage(Message),
+    SourceMessage(Message),
 }
 
-pub struct Bouncer {}
+pub struct Bouncer {
+    sink_sender: Sender<Message>,
+    source_sender: Sender<Message>,
+}
 
 impl Bouncer {
     pub async fn run(host: String, port: u16) {
-        let (server_sender, server_receiver) = channel(10);
-        let (client_sender, client_receiver) = channel(10);
+        let (sink_sender, sink_receiver) = channel(10);
+        let (source_sender, source_receiver) = channel(10);
 
-        let client_join_handle = task::spawn(async move {
-            let client = Client::new(host, port).await.unwrap();
-            let mut client_stream = client.stream().fuse();
-            let mut server_receiver = server_receiver.fuse();
+        let bouncer = Arc::new(Self { sink_sender, source_sender });
+
+        let bouncer_clone = bouncer.clone();
+        let source_join_handle = task::spawn(async move {
+            let source = Client::new(host, port).await.unwrap();
+            let mut source_stream = source.stream().fuse();
+            let mut sink_receiver = sink_receiver.fuse();
 
             loop {
                 let res = select! {
-                    message = client_stream.next() => Message::ClientMessage(message.unwrap()),
-                    message = server_receiver.next() => Message::ServerMessage(message.unwrap()),
+                    message = source_stream.next() => BouncerMessage::SourceMessage(message.unwrap()),
+                    message = sink_receiver.next() => BouncerMessage::SinkMessage(message.unwrap()),
                 };
 
                 match res {
-                    Message::ServerMessage(message) => client.send_message(message).unwrap(),
-                    Message::ClientMessage(message) => client_sender.send(message).await,
+                    BouncerMessage::SinkMessage(message) => source.send_message(message).unwrap(),
+                    BouncerMessage::SourceMessage(message) => bouncer_clone.handle_source_message(message).await,
                 }
             }
         });
 
-        let server_join_handle = task::spawn(async move {
-            let server = Server::new(6667).await.unwrap();
-            let mut server_stream = server.stream().fuse();
-            let mut client_receiver = client_receiver.fuse();
+        let bouncer_clone = bouncer.clone();
+        let sink_join_handle = task::spawn(async move {
+            let sink = Server::new(6667).await.unwrap();
+            let mut sink_stream = sink.stream().fuse();
+            let mut source_receiver = source_receiver.fuse();
 
             loop {
                 let res = select! {
-                    message = server_stream.next() => Message::ServerMessage(message.unwrap()),
-                    message = client_receiver.next() => Message::ClientMessage(message.unwrap()),
+                    message = sink_stream.next() => BouncerMessage::SinkMessage(message.unwrap()),
+                    message = source_receiver.next() => BouncerMessage::SourceMessage(message.unwrap()),
                 };
 
                 match res {
-                    Message::ServerMessage(message) => server_sender.send(message).await,
-                    Message::ClientMessage(message) => server.broadcast(message).await.unwrap(),
+                    BouncerMessage::SinkMessage(message) => bouncer_clone.handle_sink_message(message).await,
+                    BouncerMessage::SourceMessage(message) => sink.broadcast(message).await.unwrap(),
                 }
             }
         });
 
-        join!(client_join_handle, server_join_handle);
+        join!(source_join_handle, sink_join_handle);
+    }
+
+    async fn handle_source_message(&self, message: Message) {
+        self.source_sender.send(message).await
+    }
+
+    async fn handle_sink_message(&self, message: Message) {
+        self.sink_sender.send(message).await
     }
 }
