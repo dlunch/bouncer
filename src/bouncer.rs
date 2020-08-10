@@ -73,6 +73,9 @@ impl Bouncer {
     }
 
     async fn handle_sink_message(&self, message: Message) {
+        if let Command::USER(_, _, _) = &message.command {
+            return;
+        }
         self.sink_sender.send(message).await
     }
 }
