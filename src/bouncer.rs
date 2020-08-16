@@ -51,7 +51,7 @@ impl Bouncer {
 
         let bouncer_clone = bouncer.clone();
         let sink_join_handle = task::spawn(async move {
-            let sink = Server::new(6667).await.unwrap();
+            let sink = Server::new(16667).await.unwrap();
             let mut sink_stream = sink.stream().fuse();
             let mut source_from_sink = source_from_sink.fuse();
 
@@ -76,9 +76,12 @@ impl Bouncer {
     }
 
     async fn handle_sink_message(&self, message: Message) {
-        if let Command::USER(_, _, _) = &message.command {
-            return;
-        }
+        match &message.command {
+            Command::USER(_, _, _) | Command::CAP(_, _, _, _) => {
+                return;
+            }
+            _ => {}
+        };
         self.sink_to_source.send(message).await
     }
 }
