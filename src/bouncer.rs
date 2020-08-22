@@ -5,9 +5,9 @@ use async_std::{
     task,
 };
 use futures::{join, select, StreamExt};
-use irc_proto::{Command, Message, Prefix, Response};
 
 use crate::irc::Client;
+use crate::irc::Message;
 use crate::irc::Server;
 
 enum BouncerMessage {
@@ -72,42 +72,35 @@ impl Bouncer {
     }
 
     async fn handle_source_message(&self, mut message: Message) {
-        if let Some(Prefix::ServerName(_)) = message.prefix {
-            message = Self::create_response_message(message.command);
+        if message.prefix.is_some() {
+            message = Self::create_response_message(&message.command, message.args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
         }
         self.source_to_sink.send(message).await
     }
 
     async fn handle_sink_message(&self, message: Message) {
-        match &message.command {
-            Command::USER(_, _, _) => {
-                // send end of motd
-                let response = Self::create_response_message(Command::Response(
-                    Response::ERR_NOMOTD,
-                    vec!["testtest".to_owned(), "MOTD File is missing".to_owned()],
-                ));
+        match message.command.as_ref() {
+            "USER" => {
+                // ERR_NOMOTD
+                let response = Self::create_response_message("422", vec!["testtest", "MOTD File is missing"]);
                 self.source_to_sink.send(response).await;
                 return;
             }
-            Command::CAP(_, _, _, _) => {
+            "CAP" => {
                 return;
             }
-            Command::NICK(_) => {
+            "NICK" => {
                 return;
             }
-            Command::PING(x, _) => {
-                Self::create_response_message(Command::PONG(x.to_owned(), None));
+            "PING" => {
+                Self::create_response_message("PONG", vec![message.args[0].as_ref()]);
             }
             _ => {}
         };
         self.sink_to_source.send(message).await
     }
 
-    fn create_response_message(command: Command) -> Message {
-        Message {
-            tags: None,
-            prefix: Some(Prefix::ServerName("irc-proxy".to_owned())),
-            command,
-        }
+    fn create_response_message(command: &str, args: Vec<&str>) -> Message {
+        Message::new(Some("irc-proxy"), command, args)
     }
 }

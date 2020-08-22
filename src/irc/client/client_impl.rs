@@ -6,10 +6,10 @@ use async_std::{
     task,
 };
 use futures::Stream;
-use irc_proto::{Command, Message, Response};
 use log::debug;
 
 use super::super::transport::Transport;
+use super::super::Message;
 
 pub struct ClientImpl {
     transport: Arc<Transport>,
@@ -22,10 +22,8 @@ impl ClientImpl {
 
         let transport = Transport::new(stream);
 
-        transport
-            .send_message(&Message::from(Command::USER("test".to_owned(), "0".to_owned(), "test".to_owned())))
-            .await?;
-        transport.send_message(&Message::from(Command::NICK("testtest".to_owned()))).await?;
+        transport.send_message(&Message::new(None, "USER", vec!["test", "0", "test"])).await?;
+        transport.send_message(&Message::new(None, "NICK", vec!["testtest"])).await?;
 
         Ok(Self {
             transport: Arc::new(transport),
@@ -46,7 +44,7 @@ impl ClientImpl {
     }
 
     fn on_connected(&self) -> Result<()> {
-        self.send_message(Message::from(Command::JOIN("#testtesttest".to_owned(), None, None)))?;
+        self.send_message(Message::new(None, "JOIN", vec!["#testtesttest"]))?;
 
         Ok(())
     }
@@ -54,16 +52,16 @@ impl ClientImpl {
     pub fn handle_message(&self, message: &Message) -> Result<()> {
         debug!("From Origin: {}", message);
 
-        match &message.command {
-            Command::PING(x, y) => {
-                let response = Message::from(Command::PONG(x.clone(), y.clone()));
+        match message.command.as_ref() {
+            "PING" => {
+                let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
 
                 self.send_message(response)?;
             }
-            Command::Response(response, _) => match response {
-                Response::RPL_ENDOFMOTD | Response::ERR_NOMOTD => self.on_connected()?,
-                _ => {}
-            },
+            "376" | "422" => {
+                // RPL_ENDOFMOTD | ERR_NOMOTD
+                self.on_connected()?
+            }
             _ => {}
         }
 

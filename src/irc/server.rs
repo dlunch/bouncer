@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use async_std::io::Result;
 use futures::{Stream, StreamExt};
-use irc_proto::Message;
+
+use super::Message;
 
 pub struct Server {
     server: Arc<server_impl::ServerImpl>,
