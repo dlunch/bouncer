@@ -1,6 +1,7 @@
 use async_std::{io::Result, net::TcpStream};
 use futures::{io::BufReader, AsyncBufReadExt, AsyncWriteExt, Stream, StreamExt};
-use irc_proto::Message;
+
+use super::Message;
 
 #[derive(Clone)]
 pub struct Transport {
@@ -15,12 +16,12 @@ impl Transport {
     pub fn stream(&self) -> impl Stream<Item = Message> {
         let reader = BufReader::new(self.stream.clone());
 
-        reader.lines().map(move |x| x.unwrap().parse::<Message>().unwrap())
+        reader.lines().map(move |x| Message::from_raw(x.unwrap()))
     }
 
     pub async fn send_message(&self, message: &Message) -> Result<()> {
         let mut stream = self.stream.clone();
-        stream.write(message.to_string().as_bytes()).await?;
+        stream.write(message.raw().as_bytes()).await?;
 
         Ok(())
     }

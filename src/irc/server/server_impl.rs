@@ -7,10 +7,10 @@ use async_std::{
     task,
 };
 use futures::{stream::Stream, StreamExt};
-use irc_proto::{Command, Message};
 use log::debug;
 
 use super::super::transport::Transport;
+use super::super::Message;
 
 struct Transports {
     data: HashMap<u32, Transport>,
@@ -119,8 +119,8 @@ impl ServerImpl {
     }
 
     pub fn handle_message(&self, sender: Transport, message: &Message) -> Result<()> {
-        if let Command::PING(server1, server2) = &message.command {
-            let response = Message::from(Command::PONG(server1.clone(), server2.clone()));
+        if message.command == "PING" {
+            let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
 
             self.send_response(sender, response).unwrap();
         }
