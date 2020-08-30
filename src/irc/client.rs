@@ -15,6 +15,9 @@ impl Client {
     pub async fn new(host: String, port: u16) -> Result<Self> {
         let client = Arc::new(client_impl::ClientImpl::new(host, port).await?);
 
+        client.send_message(Message::new(None, "USER", vec!["test", "0", "*", "test"])).unwrap();
+        client.send_message(Message::new(None, "NICK", vec!["testtest"])).unwrap();
+
         Ok(Self { client })
     }
 
