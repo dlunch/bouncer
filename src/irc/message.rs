@@ -40,7 +40,23 @@ impl Message {
     }
 
     pub fn raw(&self) -> String {
-        "".to_owned()
+        let mut args = Vec::with_capacity(self.args.len());
+        for arg in &self.args {
+            if !arg.contains(' ') {
+                args.push(arg.into());
+            } else {
+                args.push(format!(":{}", arg));
+                break;
+            }
+        }
+
+        let args = args.join(" ");
+
+        if let Some(x) = &self.prefix {
+            format!(":{} {} {}", x, self.command, args)
+        } else {
+            format!("{} {}", self.command, args)
+        }
     }
 }
 
@@ -82,5 +98,26 @@ mod test {
         assert_eq!(message.args.len(), 2);
         assert_eq!(message.args[0], "#test");
         assert_eq!(message.args[1], "test test");
+    }
+
+    #[test]
+    fn test_raw_simple() {
+        let message = Message::new(None, "PING", vec!["12341234"]);
+
+        assert_eq!(message.raw(), "PING 12341234");
+    }
+
+    #[test]
+    fn test_raw_trailing() {
+        let message = Message::new(Some("test@test"), "PRIVMSG", vec!["#test", "test test"]);
+
+        assert_eq!(message.raw(), ":test@test PRIVMSG #test :test test");
+    }
+
+    #[test]
+    fn test_raw_prefix() {
+        let message = Message::new(Some("test@test"), "PING", vec!["12341234"]);
+
+        assert_eq!(message.raw(), ":test@test PING 12341234");
     }
 }
