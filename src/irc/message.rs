@@ -16,7 +16,7 @@ impl Message {
     }
 
     pub fn from_raw(raw: String) -> Self {
-        let mut split = raw.split(' ').peekable();
+        let mut split = raw.trim_matches(|x: char| x.is_control()).split(' ').peekable();
 
         let prefix = if split.peek().unwrap().starts_with(':') {
             Some(split.next().unwrap()[1..].into())
@@ -53,9 +53,9 @@ impl Message {
         let args = args.join(" ");
 
         if let Some(x) = &self.prefix {
-            format!(":{} {} {}", x, self.command, args)
+            format!(":{} {} {}\r\n", x, self.command, args)
         } else {
-            format!("{} {}", self.command, args)
+            format!("{} {}\r\n", self.command, args)
         }
     }
 }
@@ -72,7 +72,7 @@ mod test {
 
     #[test]
     fn test_parse_simple() {
-        let message = Message::from_raw("NICK test".into());
+        let message = Message::from_raw("NICK test\r\n".into());
 
         assert_eq!(message.command, "NICK");
         assert_eq!(message.args.len(), 1);
@@ -81,7 +81,7 @@ mod test {
 
     #[test]
     fn test_parse_trailing() {
-        let message = Message::from_raw("PRIVMSG #test :test test".into());
+        let message = Message::from_raw("PRIVMSG #test :test test\r\n".into());
 
         assert_eq!(message.command, "PRIVMSG");
         assert_eq!(message.args.len(), 2);
@@ -91,7 +91,7 @@ mod test {
 
     #[test]
     fn test_parse_prefix() {
-        let message = Message::from_raw(":test@test PRIVMSG #test :test test".into());
+        let message = Message::from_raw(":test@test PRIVMSG #test :test test\r\n".into());
 
         assert_eq!(message.prefix, Some("test@test".into()));
         assert_eq!(message.command, "PRIVMSG");
@@ -104,20 +104,20 @@ mod test {
     fn test_raw_simple() {
         let message = Message::new(None, "PING", vec!["12341234"]);
 
-        assert_eq!(message.raw(), "PING 12341234");
+        assert_eq!(message.raw(), "PING 12341234\r\n");
     }
 
     #[test]
     fn test_raw_trailing() {
         let message = Message::new(Some("test@test"), "PRIVMSG", vec!["#test", "test test"]);
 
-        assert_eq!(message.raw(), ":test@test PRIVMSG #test :test test");
+        assert_eq!(message.raw(), ":test@test PRIVMSG #test :test test\r\n");
     }
 
     #[test]
     fn test_raw_prefix() {
         let message = Message::new(Some("test@test"), "PING", vec!["12341234"]);
 
-        assert_eq!(message.raw(), ":test@test PING 12341234");
+        assert_eq!(message.raw(), ":test@test PING 12341234\r\n");
     }
 }
