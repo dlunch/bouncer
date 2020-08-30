@@ -62,7 +62,7 @@ impl Message {
 
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.raw())
+        write!(f, "{}", self.raw().trim_matches(|x: char| x.is_control()))
     }
 }
 
