@@ -72,8 +72,19 @@ impl Bouncer {
     }
 
     async fn handle_source_message(&self, mut message: Message) {
-        if message.prefix.is_some() {
-            message = Self::create_response_message(&message.command, message.args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+        if let Some(x) = message.prefix {
+            let prefix = if !(x.contains('!') && x.contains('@')) {
+                // TODO temp server detection
+                "irc-proxy"
+            } else {
+                &x
+            };
+
+            message = Self::create_response_message(
+                Some(prefix),
+                &message.command,
+                message.args.iter().map(|x| x.as_ref()).collect::<Vec<_>>(),
+            );
         }
         self.source_to_sink.send(message).await
     }
@@ -82,7 +93,7 @@ impl Bouncer {
         match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
-                let response = Self::create_response_message("422", vec!["testtest", "MOTD File is missing"]);
+                let response = Self::create_response_message(Some("irc-proxy"), "422", vec!["testtest", "MOTD File is missing"]);
                 self.source_to_sink.send(response).await;
                 return;
             }
@@ -93,14 +104,14 @@ impl Bouncer {
                 return;
             }
             "PING" => {
-                Self::create_response_message("PONG", vec![message.args[0].as_ref()]);
+                Self::create_response_message(Some("irc-proxy"), "PONG", vec![message.args[0].as_ref()]);
             }
             _ => {}
         };
         self.sink_to_source.send(message).await
     }
 
-    fn create_response_message(command: &str, args: Vec<&str>) -> Message {
-        Message::new(Some("irc-proxy"), command, args)
+    fn create_response_message(prefix: Option<&str>, command: &str, args: Vec<&str>) -> Message {
+        Message::new(prefix, command, args)
     }
 }
