@@ -44,8 +44,6 @@ impl ClientImpl {
     }
 
     fn on_connected(&self) -> Result<()> {
-        self.send_message(Message::new(None, "JOIN", vec!["#testtesttest"]))?;
-
         Ok(())
     }
 
