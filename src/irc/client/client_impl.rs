@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use async_std::{
     io::Result,
     net::{TcpStream, ToSocketAddrs},
@@ -11,7 +9,7 @@ use super::super::transport::Transport;
 use super::super::Message;
 
 pub struct ClientImpl {
-    transport: Arc<Transport>,
+    transport: Transport,
 }
 
 impl ClientImpl {
@@ -24,9 +22,7 @@ impl ClientImpl {
         transport.send_message(&Message::new(None, "USER", vec!["test", "0", "test"])).await?;
         transport.send_message(&Message::new(None, "NICK", vec!["testtest"])).await?;
 
-        Ok(Self {
-            transport: Arc::new(transport),
-        })
+        Ok(Self { transport })
     }
 
     pub fn stream(&self) -> impl Stream<Item = Message> {
