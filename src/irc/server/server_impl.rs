@@ -55,12 +55,14 @@ impl ServerImpl {
         let (sender, receiver) = channel(10);
         let streams = Arc::new(Mutex::new(Transports::new()));
 
-        let streams2 = streams.clone();
-        task::spawn(async move {
-            Self::accept_loop(listener, sender, streams2).await.unwrap();
+        let result = Self { receiver, streams };
+
+        let streams = result.streams.clone();
+        task::spawn(async {
+            Self::accept_loop(listener, sender, streams).await.unwrap();
         });
 
-        Ok(Self { receiver, streams })
+        Ok(result)
     }
 
     async fn accept_loop(listener: TcpListener, sender: Sender<(Message, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
@@ -70,9 +72,9 @@ impl ServerImpl {
             let transport = Transport::new(stream?);
             let sender = sender.clone();
 
-            let transports2 = transports.clone();
+            let transports = transports.clone();
             task::spawn(async move {
-                Self::read_loop(transport, sender, transports2).await.unwrap();
+                Self::read_loop(transport, sender, transports).await.unwrap();
             });
         }
 
