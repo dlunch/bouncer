@@ -3,7 +3,6 @@ use std::sync::Arc;
 use async_std::{
     io::Result,
     net::{TcpStream, ToSocketAddrs},
-    task,
 };
 use futures::Stream;
 use log::debug;
@@ -34,11 +33,10 @@ impl ClientImpl {
         self.transport.stream()
     }
 
-    pub fn send_message(&self, message: Message) -> Result<()> {
+    pub async fn send_message(&self, message: Message) -> Result<()> {
         debug!("To Origin: {}", message);
 
-        let transport = self.transport.clone();
-        task::spawn(async move { transport.send_message(&message).await.unwrap() });
+        self.transport.send_message(&message).await?;
 
         Ok(())
     }
@@ -47,14 +45,14 @@ impl ClientImpl {
         Ok(())
     }
 
-    pub fn handle_message(&self, message: &Message) -> Result<()> {
+    pub async fn handle_message(&self, message: &Message) -> Result<()> {
         debug!("From Origin: {}", message);
 
         match message.command.as_ref() {
             "PING" => {
                 let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
 
-                self.send_message(response)?;
+                self.send_message(response).await?;
             }
             "376" | "422" => {
                 // RPL_ENDOFMOTD | ERR_NOMOTD

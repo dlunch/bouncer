@@ -70,6 +70,6 @@ impl Bouncer {
             _ => {}
         };
 
-        self.client.send_message(message)
+        self.client.send_message(message).await
     }
 }
