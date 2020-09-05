@@ -49,27 +49,6 @@ impl Bouncer {
     }
 
     async fn handle_server_message(&self, message: Message) -> Result<()> {
-        match message.command.as_ref() {
-            "USER" => {
-                // ERR_NOMOTD
-                let message = Message::new(Some("irc-proxy"), "422", vec!["testtest", "MOTD File is missing"]);
-
-                return self.server.broadcast(message).await;
-            }
-            "CAP" => {
-                return Ok(());
-            }
-            "NICK" => {
-                return Ok(());
-            }
-            "PING" => {
-                let message = Message::new(Some("irc-proxy"), "PONG", vec![message.args[0].as_ref()]);
-
-                return self.server.broadcast(message).await;
-            }
-            _ => {}
-        };
-
         self.client.send_message(message).await
     }
 }

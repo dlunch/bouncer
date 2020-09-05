@@ -94,14 +94,9 @@ impl Server {
     }
 
     pub fn stream<'a>(&'a self) -> impl Stream<Item = Message> + 'a {
-        self.receiver.clone().then(move |(message, sender)| {
-            async move {
-                self.handle_message(&sender, &message).await.unwrap();
-
-                message
-            }
-            .boxed()
-        })
+        self.receiver
+            .clone()
+            .filter_map(move |(message, sender)| async move { self.handle_message(&sender, message).await.unwrap() }.boxed())
     }
 
     pub async fn broadcast(&self, message: Message) -> Result<()> {
@@ -120,15 +115,28 @@ impl Server {
         receiver.send_message(&message).await
     }
 
-    pub async fn handle_message(&self, sender: &Transport, message: &Message) -> Result<()> {
+    pub async fn handle_message(&self, sender: &Transport, message: Message) -> Result<Option<Message>> {
         debug!("From Client: {}", message);
 
-        if message.command == "PING" {
-            let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
+        match message.command.as_ref() {
+            "USER" => {
+                // ERR_NOMOTD
+                let message = Message::new(Some("irc-proxy"), "422", vec!["testtest", "MOTD File is missing"]);
 
-            self.send_response(&sender, response).await?;
+                self.send_response(&sender, message).await?;
+
+                Ok(None)
+            }
+            "CAP" => Ok(None),
+            "NICK" => Ok(None),
+            "PING" => {
+                let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
+
+                self.send_response(&sender, response).await?;
+
+                Ok(None)
+            }
+            _ => Ok(Some(message)),
         }
-
-        Ok(())
     }
 }
