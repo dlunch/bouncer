@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let host = matches.value_of("host").unwrap().to_owned();
     let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
 
-    Bouncer::run(host, port).await;
+    Bouncer::run(host, port).await?;
 
     Ok(())
 }
