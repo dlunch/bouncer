@@ -39,7 +39,7 @@ impl Bouncer {
                 &x
             };
 
-            message = Self::create_response_message(
+            message = Message::new(
                 Some(prefix),
                 &message.command,
                 message.args.iter().map(|x| x.as_ref()).collect::<Vec<_>>(),
@@ -52,7 +52,7 @@ impl Bouncer {
         match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
-                let message = Self::create_response_message(Some("irc-proxy"), "422", vec!["testtest", "MOTD File is missing"]);
+                let message = Message::new(Some("irc-proxy"), "422", vec!["testtest", "MOTD File is missing"]);
 
                 return self.server.broadcast(message).await;
             }
@@ -63,7 +63,7 @@ impl Bouncer {
                 return Ok(());
             }
             "PING" => {
-                let message = Self::create_response_message(Some("irc-proxy"), "PONG", vec![message.args[0].as_ref()]);
+                let message = Message::new(Some("irc-proxy"), "PONG", vec![message.args[0].as_ref()]);
 
                 return self.server.broadcast(message).await;
             }
@@ -71,9 +71,5 @@ impl Bouncer {
         };
 
         self.client.send_message(message)
-    }
-
-    fn create_response_message(prefix: Option<&str>, command: &str, args: Vec<&str>) -> Message {
-        Message::new(prefix, command, args)
     }
 }
