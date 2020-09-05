@@ -17,10 +17,6 @@ impl Client {
         let stream = TcpStream::connect(addr).await?;
 
         let transport = Transport::new(stream);
-
-        transport.send_message(&Message::new(None, "USER", vec!["test", "0", "test"])).await?;
-        transport.send_message(&Message::new(None, "NICK", vec!["testtest"])).await?;
-
         let result = Self { transport };
 
         result.send_message(Message::new(None, "USER", vec!["test", "0", "*", "test"])).await?;
