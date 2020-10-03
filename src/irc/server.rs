@@ -9,7 +9,7 @@ use async_std::{
 use futures::{FutureExt, Stream, StreamExt};
 use log::debug;
 
-use super::{transport::Transport, Message};
+use super::{transport::Transport, Message, Prefix};
 
 struct Transports {
     data: HashMap<u32, Transport>,
@@ -121,7 +121,7 @@ impl Server {
         match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
-                let message = Message::new(Some("irc-proxy"), "422", vec!["testtest", "MOTD File is missing"]);
+                let message = Message::new(Some(Prefix::Server("irc-proxy".into())), "422", vec!["testtest", "MOTD File is missing"]);
 
                 self.send_response(&sender, message).await?;
 

@@ -6,4 +6,4 @@ mod transport;
 pub use client::Client;
 pub use server::Server;
 
-pub use message::Message;
+pub use message::{Message, Prefix};

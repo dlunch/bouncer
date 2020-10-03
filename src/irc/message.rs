@@ -1,14 +1,43 @@
 use std::iter;
 
+#[derive(Eq, PartialEq)]
+pub enum Prefix {
+    Server(String),
+    User(String),
+}
+
+impl Prefix {
+    pub fn from_raw(raw: String) -> Self {
+        if raw.contains('.') && !(raw.contains('!') && raw.contains('@')) {
+            Self::Server(raw)
+        } else {
+            Self::User(raw)
+        }
+    }
+
+    pub fn raw(&self) -> &str {
+        match self {
+            Self::Server(x) => x,
+            Self::User(x) => x,
+        }
+    }
+
+    pub fn is_server(&self) -> bool {
+        match self {
+            Self::Server(_) => true,
+            Self::User(_) => false,
+        }
+    }
+}
+
 pub struct Message {
-    pub prefix: Option<String>,
+    pub prefix: Option<Prefix>,
     pub command: String,
     pub args: Vec<String>,
 }
 
 impl Message {
-    pub fn new(prefix: Option<&str>, command: &str, args: Vec<&str>) -> Self {
-        let prefix = prefix.map(|x| x.to_owned());
+    pub fn new(prefix: Option<Prefix>, command: &str, args: Vec<&str>) -> Self {
         let command = command.to_owned();
         let args = args.into_iter().map(|x| x.to_owned()).collect::<Vec<_>>();
 
@@ -19,7 +48,7 @@ impl Message {
         let mut split = raw.trim_matches(|x: char| x.is_control()).split(' ').peekable();
 
         let prefix = if split.peek().unwrap().starts_with(':') {
-            Some(split.next().unwrap()[1..].into())
+            Some(Prefix::from_raw(split.next().unwrap()[1..].into()))
         } else {
             None
         };
@@ -53,7 +82,7 @@ impl Message {
         let args = args.join(" ");
 
         if let Some(x) = &self.prefix {
-            format!(":{} {} {}\r\n", x, self.command, args)
+            format!(":{} {} {}\r\n", x.raw(), self.command, args)
         } else {
             format!("{} {}\r\n", self.command, args)
         }
@@ -93,7 +122,18 @@ mod test {
     fn test_parse_prefix() {
         let message = Message::from_raw(":test@test PRIVMSG #test :test test\r\n".into());
 
-        assert_eq!(message.prefix, Some("test@test".into()));
+        assert!(message.prefix == Some(Prefix::User("test@test".into())));
+        assert_eq!(message.command, "PRIVMSG");
+        assert_eq!(message.args.len(), 2);
+        assert_eq!(message.args[0], "#test");
+        assert_eq!(message.args[1], "test test");
+    }
+
+    #[test]
+    fn test_parse_prefix_server() {
+        let message = Message::from_raw(":server1.com PRIVMSG #test :test test\r\n".into());
+
+        assert!(message.prefix == Some(Prefix::Server("server1.com".into())));
         assert_eq!(message.command, "PRIVMSG");
         assert_eq!(message.args.len(), 2);
         assert_eq!(message.args[0], "#test");
@@ -109,14 +149,14 @@ mod test {
 
     #[test]
     fn test_raw_trailing() {
-        let message = Message::new(Some("test@test"), "PRIVMSG", vec!["#test", "test test"]);
+        let message = Message::new(Some(Prefix::from_raw("test@test".into())), "PRIVMSG", vec!["#test", "test test"]);
 
         assert_eq!(message.raw(), ":test@test PRIVMSG #test :test test\r\n");
     }
 
     #[test]
     fn test_raw_prefix() {
-        let message = Message::new(Some("test@test"), "PING", vec!["12341234"]);
+        let message = Message::new(Some(Prefix::from_raw("test@test".into())), "PING", vec!["12341234"]);
 
         assert_eq!(message.raw(), ":test@test PING 12341234\r\n");
     }
