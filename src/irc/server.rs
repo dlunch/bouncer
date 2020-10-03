@@ -100,13 +100,12 @@ impl Server {
     }
 
     pub async fn broadcast(&self, mut message: Message) -> Result<()> {
-        debug!("Broadcast: {}", message);
-
         if let Some(x) = &message.prefix {
             if x.is_server() {
                 message.prefix = Some(Self::server_prefix());
             }
         }
+        debug!("Broadcast: {}", message);
 
         let mut streams = self.streams.lock().await;
 
@@ -118,6 +117,7 @@ impl Server {
     }
 
     async fn send_response(&self, receiver: &Transport, message: Message) -> Result<()> {
+        debug!("To Client: {}", message);
         receiver.send_message(&message).await
     }
 
