@@ -2,8 +2,9 @@ use async_std::io::Result;
 use futures::{select, FutureExt, StreamExt};
 
 use crate::irc::Client;
-use crate::irc::Message;
 use crate::irc::Server;
+
+use crate::message::Message;
 
 pub struct Bouncer {
     client: Client,

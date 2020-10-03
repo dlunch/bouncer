@@ -1,5 +1,6 @@
 mod bouncer;
 mod irc;
+mod message;
 
 use std::error::Error;
 

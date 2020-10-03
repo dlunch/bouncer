@@ -1,7 +1,7 @@
 use async_std::{io::Result, net::TcpStream};
 use futures::{io::BufReader, AsyncBufReadExt, AsyncWriteExt, Stream, StreamExt};
 
-use super::Message;
+use super::message::Message;
 
 #[derive(Clone)]
 pub struct Transport {
