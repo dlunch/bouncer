@@ -32,7 +32,7 @@ impl Bouncer {
 
     async fn handle_client_message(&self, mut message: Message) -> Result<()> {
         if let Some(x) = message.prefix {
-            let prefix = if x.is_server() { Prefix::Server("irc-proxy".into()) } else { x };
+            let prefix = if x.is_server() { Prefix::Server("irc.proxy".into()) } else { x };
 
             message = Message::new(
                 Some(prefix),

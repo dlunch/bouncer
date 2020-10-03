@@ -121,7 +121,7 @@ impl Server {
         match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
-                let message = Message::new(Some(Prefix::Server("irc-proxy".into())), "422", vec!["testtest", "MOTD File is missing"]);
+                let message = Message::new(Some(Prefix::Server("irc.proxy".into())), "422", vec!["testtest", "MOTD File is missing"]);
 
                 self.send_response(&sender, message).await?;
 
