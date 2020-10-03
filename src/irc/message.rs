@@ -1,5 +1,7 @@
 use std::iter;
 
+use crate::message::Message as CommonMessage;
+
 #[derive(Eq, PartialEq)]
 pub enum Prefix {
     Server(String),
@@ -19,13 +21,6 @@ impl Prefix {
         match self {
             Self::Server(x) => x,
             Self::User(x) => x,
-        }
-    }
-
-    pub fn is_server(&self) -> bool {
-        match self {
-            Self::Server(_) => true,
-            Self::User(_) => false,
         }
     }
 }
@@ -85,6 +80,36 @@ impl Message {
             format!(":{} {} {}\r\n", x.raw(), self.command, args)
         } else {
             format!("{} {}\r\n", self.command, args)
+        }
+    }
+
+    pub fn from_message(message: CommonMessage) -> Self {
+        match message {
+            CommonMessage::Chat { channel, content, .. } => Self {
+                prefix: None,
+                command: "PRIVMSG".into(),
+                args: vec![channel, content],
+            },
+            CommonMessage::Join { channel, .. } => Self {
+                prefix: None,
+                command: "JOIN".into(),
+                args: vec![channel],
+            },
+        }
+    }
+
+    pub fn into_message(self) -> CommonMessage {
+        match self.command.as_ref() {
+            "PRIVMSG" => CommonMessage::Chat {
+                channel: self.args[0].clone(),
+                content: self.args[1].clone(),
+                sender: self.prefix.unwrap().raw().into(),
+            },
+            "JOIN" => CommonMessage::Join {
+                channel: self.args[0].clone(),
+                sender: self.prefix.unwrap().raw().into(),
+            },
+            _ => panic!("Unhandled {}", self.command),
         }
     }
 }

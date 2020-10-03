@@ -5,7 +5,8 @@ use async_std::{
 use futures::{FutureExt, Stream, StreamExt};
 use log::debug;
 
-use super::{transport::Transport, Message};
+use super::{message::Message as IRCMessage, transport::Transport};
+use crate::message::Message;
 
 pub struct Client {
     transport: Transport,
@@ -19,27 +20,30 @@ impl Client {
         let transport = Transport::new(stream);
         let result = Self { transport };
 
-        result.send_message(Message::new(None, "USER", vec!["test", "0", "*", "test"])).await?;
-        result.send_message(Message::new(None, "NICK", vec!["testtest"])).await?;
+        result
+            .transport
+            .send_message(&IRCMessage::new(None, "USER", vec!["test", "0", "*", "test"]))
+            .await?;
+        result.transport.send_message(&IRCMessage::new(None, "NICK", vec!["testtest"])).await?;
 
         Ok(result)
     }
 
     pub fn stream<'a>(&'a self) -> impl Stream<Item = Message> + 'a {
-        self.transport.stream().then(move |message: Message| {
+        self.transport.stream().then(move |message| {
             async move {
                 self.handle_message(&message).await.unwrap();
 
-                message
+                message.into_message()
             }
             .boxed()
         })
     }
 
     pub async fn send_message(&self, message: Message) -> Result<()> {
-        debug!("To Origin: {}", message);
+        debug!("To Origin: {:?}", message);
 
-        self.transport.send_message(&message).await?;
+        self.transport.send_message(&IRCMessage::from_message(message)).await?;
 
         Ok(())
     }
@@ -48,14 +52,14 @@ impl Client {
         Ok(())
     }
 
-    pub async fn handle_message(&self, message: &Message) -> Result<()> {
+    pub async fn handle_message(&self, message: &IRCMessage) -> Result<()> {
         debug!("From Origin: {}", message);
 
         match message.command.as_ref() {
             "PING" => {
-                let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
+                let response = IRCMessage::new(None, "PONG", vec![message.args[0].as_ref()]);
 
-                self.send_message(response).await?;
+                self.transport.send_message(&response).await?;
             }
             "376" | "422" => {
                 // RPL_ENDOFMOTD | ERR_NOMOTD

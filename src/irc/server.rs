@@ -9,7 +9,11 @@ use async_std::{
 use futures::{FutureExt, Stream, StreamExt};
 use log::debug;
 
-use super::{transport::Transport, Message, Prefix};
+use super::{
+    message::{Message as IRCMessage, Prefix as IRCPrefix},
+    transport::Transport,
+};
+use crate::message::Message;
 
 struct Transports {
     data: HashMap<u32, Transport>,
@@ -43,7 +47,7 @@ impl Transports {
 }
 
 pub struct Server {
-    receiver: Receiver<(Message, Transport)>,
+    receiver: Receiver<(IRCMessage, Transport)>,
     streams: Arc<Mutex<Transports>>,
 }
 
@@ -64,7 +68,7 @@ impl Server {
         Ok(result)
     }
 
-    async fn accept_loop(listener: TcpListener, sender: Sender<(Message, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
+    async fn accept_loop(listener: TcpListener, sender: Sender<(IRCMessage, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
         let mut incoming = listener.incoming();
 
         while let Some(stream) = incoming.next().await {
@@ -80,7 +84,7 @@ impl Server {
         Ok(())
     }
 
-    async fn read_loop(transport: Transport, sender: Sender<(Message, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
+    async fn read_loop(transport: Transport, sender: Sender<(IRCMessage, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
         let index = transports.lock().await.insert(&transport);
 
         let mut stream = transport.stream();
@@ -99,54 +103,50 @@ impl Server {
             .filter_map(move |(message, sender)| async move { self.handle_message(&sender, message).await.unwrap() }.boxed())
     }
 
-    pub async fn broadcast(&self, mut message: Message) -> Result<()> {
-        if let Some(x) = &message.prefix {
-            if x.is_server() {
-                message.prefix = Some(Self::server_prefix());
-            }
-        }
-        debug!("Broadcast: {}", message);
+    pub async fn broadcast(&self, message: Message) -> Result<()> {
+        debug!("Broadcast: {:?}", message);
 
         let mut streams = self.streams.lock().await;
 
+        let irc_message = IRCMessage::from_message(message);
         for stream in streams.iter_mut() {
-            stream.send_message(&message).await?;
+            stream.send_message(&irc_message).await?;
         }
 
         Ok(())
     }
 
-    async fn send_response(&self, receiver: &Transport, message: Message) -> Result<()> {
+    async fn send_response(&self, receiver: &Transport, message: IRCMessage) -> Result<()> {
         debug!("To Client: {}", message);
         receiver.send_message(&message).await
     }
 
-    pub async fn handle_message(&self, sender: &Transport, message: Message) -> Result<Option<Message>> {
+    pub async fn handle_message(&self, sender: &Transport, message: IRCMessage) -> Result<Option<Message>> {
         debug!("From Client: {}", message);
 
         match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
-                let message = Message::new(Some(Self::server_prefix()), "422", vec!["testtest", "MOTD File is missing"]);
+                let response = IRCMessage::new(Some(Self::server_prefix()), "422", vec!["testtest", "MOTD File is missing"]);
 
-                self.send_response(&sender, message).await?;
+                self.send_response(&sender, response).await?;
 
                 Ok(None)
             }
             "CAP" => Ok(None),
             "NICK" => Ok(None),
             "PING" => {
-                let response = Message::new(Some(Self::server_prefix()), "PONG", vec![message.args[0].as_ref()]);
+                let response = IRCMessage::new(Some(Self::server_prefix()), "PONG", vec![message.args[0].as_ref()]);
 
                 self.send_response(&sender, response).await?;
 
                 Ok(None)
             }
-            _ => Ok(Some(message)),
+            _ => Ok(Some(message.into_message())),
         }
     }
 
-    fn server_prefix() -> Prefix {
-        Prefix::Server("irc.proxy".into())
+    fn server_prefix() -> IRCPrefix {
+        IRCPrefix::Server("irc.proxy".into())
     }
 }
