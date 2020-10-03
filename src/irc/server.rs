@@ -136,7 +136,7 @@ impl Server {
             "CAP" => Ok(None),
             "NICK" => Ok(None),
             "PING" => {
-                let response = Message::new(None, "PONG", vec![message.args[0].as_ref()]);
+                let response = Message::new(Some(Self::server_prefix()), "PONG", vec![message.args[0].as_ref()]);
 
                 self.send_response(&sender, response).await?;
 
