@@ -99,8 +99,14 @@ impl Server {
             .filter_map(move |(message, sender)| async move { self.handle_message(&sender, message).await.unwrap() }.boxed())
     }
 
-    pub async fn broadcast(&self, message: Message) -> Result<()> {
+    pub async fn broadcast(&self, mut message: Message) -> Result<()> {
         debug!("Broadcast: {}", message);
+
+        if let Some(x) = &message.prefix {
+            if x.is_server() {
+                message.prefix = Some(Self::server_prefix());
+            }
+        }
 
         let mut streams = self.streams.lock().await;
 
@@ -121,7 +127,7 @@ impl Server {
         match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
-                let message = Message::new(Some(Prefix::Server("irc.proxy".into())), "422", vec!["testtest", "MOTD File is missing"]);
+                let message = Message::new(Some(Self::server_prefix()), "422", vec!["testtest", "MOTD File is missing"]);
 
                 self.send_response(&sender, message).await?;
 
@@ -138,5 +144,9 @@ impl Server {
             }
             _ => Ok(Some(message)),
         }
+    }
+
+    fn server_prefix() -> Prefix {
+        Prefix::Server("irc.proxy".into())
     }
 }

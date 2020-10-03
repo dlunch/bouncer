@@ -2,8 +2,8 @@ use async_std::io::Result;
 use futures::{select, FutureExt, StreamExt};
 
 use crate::irc::Client;
+use crate::irc::Message;
 use crate::irc::Server;
-use crate::irc::{Message, Prefix};
 
 pub struct Bouncer {
     client: Client,
@@ -30,16 +30,7 @@ impl Bouncer {
         }
     }
 
-    async fn handle_client_message(&self, mut message: Message) -> Result<()> {
-        if let Some(x) = message.prefix {
-            let prefix = if x.is_server() { Prefix::Server("irc.proxy".into()) } else { x };
-
-            message = Message::new(
-                Some(prefix),
-                &message.command,
-                message.args.iter().map(|x| x.as_ref()).collect::<Vec<_>>(),
-            );
-        }
+    async fn handle_client_message(&self, message: Message) -> Result<()> {
         self.server.broadcast(message).await
     }
 
