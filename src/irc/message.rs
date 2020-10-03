@@ -57,8 +57,8 @@ impl Message {
 
         let mut args = Vec::<String>::with_capacity(split.size_hint().0);
         while let Some(item) = split.next() {
-            if item.starts_with(':') {
-                args.push(iter::once(&item[1..]).chain(split).collect::<Vec<_>>().join(" "));
+            if let Some(x) = item.strip_prefix(':') {
+                args.push(iter::once(x).chain(split).collect::<Vec<_>>().join(" "));
                 break;
             } else {
                 args.push(item.into())
