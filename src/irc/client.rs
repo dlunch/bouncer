@@ -30,7 +30,7 @@ impl Client {
     }
 
     pub fn stream<'a>(&'a self) -> impl Stream<Item = Message> + 'a {
-        self.transport.stream().then(move |message| {
+        self.transport.stream().filter_map(move |message| {
             async move {
                 self.handle_message(&message).await.unwrap();
 

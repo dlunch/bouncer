@@ -142,7 +142,7 @@ impl Server {
 
                 Ok(None)
             }
-            _ => Ok(Some(message.into_message())),
+            _ => Ok(message.into_message()),
         }
     }
 
