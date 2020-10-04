@@ -4,5 +4,6 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type")]
 pub enum Message {
     Chat { sender: String, channel: String, content: String },
-    Join { sender: String, channel: String },
+    JoinedChannel { sender: String, channel: String },
+    JoinChannel { channel: String },
 }

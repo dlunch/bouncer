@@ -1,5 +1,7 @@
 use std::iter;
 
+use log::error;
+
 use crate::message::Message as CommonMessage;
 
 #[derive(Eq, PartialEq)]
@@ -90,26 +92,43 @@ impl Message {
                 command: "PRIVMSG".into(),
                 args: vec![channel, content],
             },
-            CommonMessage::Join { channel, .. } => Self {
+            CommonMessage::JoinChannel { channel } => Self {
                 prefix: None,
+                command: "JOIN".into(),
+                args: vec![channel],
+            },
+            CommonMessage::JoinedChannel { channel, sender } => Self {
+                prefix: Some(Prefix::from_raw(sender)),
                 command: "JOIN".into(),
                 args: vec![channel],
             },
         }
     }
 
-    pub fn into_message(self) -> CommonMessage {
+    pub fn into_message(self) -> Option<CommonMessage> {
         match self.command.as_ref() {
-            "PRIVMSG" => CommonMessage::Chat {
+            "PRIVMSG" => Some(CommonMessage::Chat {
                 channel: self.args[0].clone(),
                 content: self.args[1].clone(),
                 sender: self.prefix.unwrap().raw().into(),
-            },
-            "JOIN" => CommonMessage::Join {
-                channel: self.args[0].clone(),
-                sender: self.prefix.unwrap().raw().into(),
-            },
-            _ => panic!("Unhandled {}", self.command),
+            }),
+            "JOIN" => {
+                if let Some(x) = self.prefix {
+                    Some(CommonMessage::JoinedChannel {
+                        channel: self.args[0].clone(),
+                        sender: x.raw().into(),
+                    })
+                } else {
+                    Some(CommonMessage::JoinChannel {
+                        channel: self.args[0].clone(),
+                    })
+                }
+            }
+            _ => {
+                error!("Unhandled {}", self.command);
+
+                None
+            }
         }
     }
 }
