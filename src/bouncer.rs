@@ -12,9 +12,9 @@ pub struct Bouncer {
 }
 
 impl Bouncer {
-    pub async fn run(host: String, port: u16) -> Result<()> {
+    pub async fn run(host: String, port: u16, server_port: u16) -> Result<()> {
         let client = Client::new(host, port).await.unwrap();
-        let server = Server::new(16667).await.unwrap();
+        let server = Server::new(server_port).await.unwrap();
 
         let bouncer = Self { client, server };
 
