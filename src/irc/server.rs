@@ -160,8 +160,8 @@ impl Server {
 
     fn convert_message(&self, message: Message) -> IRCMessage {
         match message {
-            Message::Chat { channel, content, .. } => IRCMessage {
-                prefix: None,
+            Message::Chat { sender, channel, content } => IRCMessage {
+                prefix: Some(IRCPrefix::from_raw(sender)),
                 command: "PRIVMSG".into(),
                 args: vec![channel, content],
             },
