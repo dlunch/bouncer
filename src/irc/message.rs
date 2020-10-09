@@ -106,30 +106,30 @@ impl Message {
     }
 
     pub fn into_message(self) -> Option<CommonMessage> {
-        match self.command.as_ref() {
-            "PRIVMSG" => Some(CommonMessage::Chat {
+        Some(match self.command.as_ref() {
+            "PRIVMSG" => CommonMessage::Chat {
                 channel: self.args[0].clone(),
                 content: self.args[1].clone(),
                 sender: self.prefix.unwrap().raw().into(),
-            }),
+            },
             "JOIN" => {
                 if let Some(x) = self.prefix {
-                    Some(CommonMessage::JoinedChannel {
+                    CommonMessage::JoinedChannel {
                         channel: self.args[0].clone(),
                         sender: x.raw().into(),
-                    })
+                    }
                 } else {
-                    Some(CommonMessage::JoinChannel {
+                    CommonMessage::JoinChannel {
                         channel: self.args[0].clone(),
-                    })
+                    }
                 }
             }
             _ => {
                 error!("Unhandled {}", self.command);
 
-                None
+                return None;
             }
-        }
+        })
     }
 }
 
