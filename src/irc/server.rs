@@ -7,7 +7,7 @@ use async_std::{
     task,
 };
 use futures::{FutureExt, Stream, StreamExt};
-use log::debug;
+use log::{debug, error};
 
 use super::{
     message::{Message as IRCMessage, Prefix as IRCPrefix},
@@ -108,7 +108,7 @@ impl Server {
 
         let mut streams = self.streams.lock().await;
 
-        let irc_message = IRCMessage::from_message(message);
+        let irc_message = self.convert_message(message);
         for stream in streams.iter_mut() {
             stream.send_message(&irc_message).await?;
         }
@@ -121,28 +121,56 @@ impl Server {
         receiver.send_message(&message).await
     }
 
-    pub async fn handle_message(&self, sender: &Transport, message: IRCMessage) -> Result<Option<Message>> {
+    async fn handle_message(&self, sender: &Transport, message: IRCMessage) -> Result<Option<Message>> {
         debug!("From Client: {}", message);
 
-        match message.command.as_ref() {
+        Ok(match message.command.as_ref() {
             "USER" => {
                 // ERR_NOMOTD
                 let response = IRCMessage::new(Some(Self::server_prefix()), "422", vec!["testtest", "MOTD File is missing"]);
 
                 self.send_response(&sender, response).await?;
 
-                Ok(None)
+                None
             }
-            "CAP" => Ok(None),
-            "NICK" => Ok(None),
+            "CAP" => None,
+            "NICK" => None,
             "PING" => {
                 let response = IRCMessage::new(Some(Self::server_prefix()), "PONG", vec![message.args[0].as_ref()]);
 
                 self.send_response(&sender, response).await?;
 
-                Ok(None)
+                None
             }
-            _ => Ok(message.into_message()),
+            "PRIVMSG" => Some(Message::Chat {
+                channel: message.args[0].clone(),
+                content: message.args[1].clone(),
+                sender: message.prefix.as_ref().unwrap().raw().into(),
+            }),
+            "JOIN" => Some(Message::JoinChannel {
+                channel: message.args[0].clone(),
+            }),
+            _ => {
+                error!("Unhandled {}", message.command);
+
+                None
+            }
+        })
+    }
+
+    fn convert_message(&self, message: Message) -> IRCMessage {
+        match message {
+            Message::Chat { channel, content, .. } => IRCMessage {
+                prefix: None,
+                command: "PRIVMSG".into(),
+                args: vec![channel, content],
+            },
+            Message::JoinedChannel { channel, sender } => IRCMessage {
+                prefix: Some(IRCPrefix::from_raw(sender)),
+                command: "JOIN".into(),
+                args: vec![channel],
+            },
+            _ => unreachable!(),
         }
     }
 

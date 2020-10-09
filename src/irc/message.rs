@@ -1,9 +1,5 @@
 use std::iter;
 
-use log::error;
-
-use crate::message::Message as CommonMessage;
-
 #[derive(Eq, PartialEq)]
 pub enum Prefix {
     Server(String),
@@ -83,53 +79,6 @@ impl Message {
         } else {
             format!("{} {}\r\n", self.command, args)
         }
-    }
-
-    pub fn from_message(message: CommonMessage) -> Self {
-        match message {
-            CommonMessage::Chat { channel, content, .. } => Self {
-                prefix: None,
-                command: "PRIVMSG".into(),
-                args: vec![channel, content],
-            },
-            CommonMessage::JoinChannel { channel } => Self {
-                prefix: None,
-                command: "JOIN".into(),
-                args: vec![channel],
-            },
-            CommonMessage::JoinedChannel { channel, sender } => Self {
-                prefix: Some(Prefix::from_raw(sender)),
-                command: "JOIN".into(),
-                args: vec![channel],
-            },
-        }
-    }
-
-    pub fn into_message(self) -> Option<CommonMessage> {
-        Some(match self.command.as_ref() {
-            "PRIVMSG" => CommonMessage::Chat {
-                channel: self.args[0].clone(),
-                content: self.args[1].clone(),
-                sender: self.prefix.unwrap().raw().into(),
-            },
-            "JOIN" => {
-                if let Some(x) = self.prefix {
-                    CommonMessage::JoinedChannel {
-                        channel: self.args[0].clone(),
-                        sender: x.raw().into(),
-                    }
-                } else {
-                    CommonMessage::JoinChannel {
-                        channel: self.args[0].clone(),
-                    }
-                }
-            }
-            _ => {
-                error!("Unhandled {}", self.command);
-
-                return None;
-            }
-        })
     }
 }
 
