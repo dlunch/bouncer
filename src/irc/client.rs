@@ -5,7 +5,10 @@ use async_std::{
 use futures::{FutureExt, Stream, StreamExt};
 use log::{debug, error};
 
-use super::{message::Message as IRCMessage, transport::Transport};
+use super::{
+    message::{Message as IRCMessage, Reply as IRCReply},
+    transport::Transport,
+};
 use crate::message::Message;
 
 pub struct Client {
@@ -58,7 +61,7 @@ impl Client {
 
                 None
             }
-            "376" | "422" => {
+            IRCReply::RPL_ENDOFMOTD | IRCReply::ERR_NOMOTD => {
                 // RPL_ENDOFMOTD | ERR_NOMOTD
                 self.on_connected()?;
 
@@ -73,8 +76,7 @@ impl Client {
                 channel: message.args[0].clone(),
                 sender: message.prefix.as_ref().unwrap().raw().into(),
             }),
-            "353" => {
-                // RPL_NAMREPLY
+            IRCReply::RPL_NAMREPLY => {
                 if let [_client, _symbol, channel, items] = message.args.as_slice() {
                     Some(Message::NamesList {
                         channel: channel.clone(),
@@ -84,7 +86,7 @@ impl Client {
                     panic!()
                 }
             }
-            "366" => Some(Message::NamesEnd {
+            IRCReply::RPL_ENDOFNAMES => Some(Message::NamesEnd {
                 channel: message.args[1].clone(),
             }),
             _ => {
