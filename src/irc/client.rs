@@ -39,9 +39,10 @@ impl Client {
     }
 
     pub async fn send_message(&self, message: Message) -> Result<()> {
-        debug!("To Origin: {:?}", message);
+        let message = self.convert_message(message);
+        debug!("To Origin: {}", message);
 
-        self.transport.send_message(&self.convert_message(message)).await?;
+        self.transport.send_message(&message).await?;
 
         Ok(())
     }

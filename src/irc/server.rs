@@ -104,13 +104,13 @@ impl Server {
     }
 
     pub async fn broadcast(&self, message: Message) -> Result<()> {
-        debug!("Broadcast: {:?}", message);
+        let message = self.convert_message(message);
+        debug!("Broadcast: {}", message);
 
         let mut streams = self.streams.lock().await;
 
-        let irc_message = self.convert_message(message);
         for stream in streams.iter_mut() {
-            stream.send_message(&irc_message).await?;
+            stream.send_message(&message).await?;
         }
 
         Ok(())
