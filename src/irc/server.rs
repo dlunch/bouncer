@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, iter, sync::Arc};
 
 use async_std::{
     io::Result,
@@ -169,6 +169,16 @@ impl Server {
                 prefix: Some(IRCPrefix::from_raw(sender)),
                 command: "JOIN".into(),
                 args: vec![channel],
+            },
+            Message::NamesList { channel, users } => IRCMessage {
+                prefix: Some(Self::server_prefix()),
+                command: "353".into(),
+                args: iter::once(channel).chain(users.into_iter()).collect::<Vec<_>>(),
+            },
+            Message::NamesEnd { channel } => IRCMessage {
+                prefix: Some(Self::server_prefix()),
+                command: "366".into(),
+                args: vec![channel, "End of /NAMES list.".into()],
             },
             _ => unreachable!(),
         }
