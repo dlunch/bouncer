@@ -3,7 +3,7 @@ use async_std::{
     net::{TcpStream, ToSocketAddrs},
 };
 use futures::{FutureExt, Stream, StreamExt};
-use log::debug;
+use log::{debug, error};
 
 use super::{message::Message as IRCMessage, transport::Transport};
 use crate::message::Message;
@@ -73,7 +73,25 @@ impl Client {
                 channel: message.args[0].clone(),
                 sender: message.prefix.as_ref().unwrap().raw().into(),
             }),
-            _ => None,
+            "353" => {
+                // RPL_NAMREPLY
+                if let [_client, _symbol, channel, items] = message.args.as_slice() {
+                    Some(Message::NamesList {
+                        channel: channel.clone(),
+                        users: items.split(' ').map(|x| x.to_owned()).collect::<Vec<_>>(),
+                    })
+                } else {
+                    panic!()
+                }
+            }
+            "366" => Some(Message::NamesEnd {
+                channel: message.args[1].clone(),
+            }),
+            _ => {
+                error!("Unhandled {}", message.command);
+
+                None
+            }
         })
     }
 
