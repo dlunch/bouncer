@@ -80,7 +80,10 @@ impl Client {
                 if let [_client, _symbol, channel, items] = message.args.as_slice() {
                     Some(Message::NamesList {
                         channel: channel.clone(),
-                        users: items.split(' ').map(|x| x.to_owned()).collect::<Vec<_>>(),
+                        users: items
+                            .split(' ')
+                            .filter_map(|x| if !x.is_empty() { Some(x.to_owned()) } else { None })
+                            .collect::<Vec<_>>(),
                     })
                 } else {
                     panic!()
