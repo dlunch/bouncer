@@ -10,7 +10,7 @@ use futures::{FutureExt, Stream, StreamExt};
 use log::{debug, error};
 
 use super::{
-    message::{Message as IRCMessage, Prefix as IRCPrefix},
+    message::{Message as IRCMessage, Prefix as IRCPrefix, Reply as IRCReply},
     transport::Transport,
 };
 use crate::message::Message;
@@ -126,8 +126,11 @@ impl Server {
 
         Ok(match message.command.as_ref() {
             "USER" => {
-                // ERR_NOMOTD
-                let response = IRCMessage::new(Some(Self::server_prefix()), "422", vec!["testtest", "MOTD File is missing"]);
+                let response = IRCMessage::new(
+                    Some(Self::server_prefix()),
+                    IRCReply::ERR_NOMOTD,
+                    vec!["testtest", "MOTD File is missing"],
+                );
 
                 self.send_response(&sender, response).await?;
 
@@ -172,12 +175,12 @@ impl Server {
             },
             Message::NamesList { channel, users } => IRCMessage {
                 prefix: Some(Self::server_prefix()),
-                command: "353".into(),
+                command: IRCReply::RPL_NAMREPLY.into(),
                 args: iter::once(channel).chain(users.into_iter()).collect::<Vec<_>>(),
             },
             Message::NamesEnd { channel } => IRCMessage {
                 prefix: Some(Self::server_prefix()),
-                command: "366".into(),
+                command: IRCReply::RPL_ENDOFNAMES.into(),
                 args: vec![channel, "End of /NAMES list.".into()],
             },
             _ => unreachable!(),

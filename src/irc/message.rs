@@ -1,5 +1,15 @@
 use std::iter;
 
+// works as string enum
+#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
+pub mod Reply {
+    pub const RPL_NAMREPLY: &str = "353";
+    pub const RPL_ENDOFNAMES: &str = "366";
+    pub const RPL_ENDOFMOTD: &str = "376";
+    pub const ERR_NOMOTD: &str = "422";
+}
+
 #[derive(Eq, PartialEq)]
 pub enum Prefix {
     Server(String),
