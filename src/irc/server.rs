@@ -46,9 +46,14 @@ impl Transports {
     }
 }
 
+struct Context {
+    nickname: String,
+}
+
 pub struct Server {
     receiver: Receiver<(IRCMessage, Transport)>,
     streams: Arc<Mutex<Transports>>,
+    context: Mutex<Context>,
 }
 
 impl Server {
@@ -58,7 +63,11 @@ impl Server {
         let (sender, receiver) = channel(10);
         let streams = Arc::new(Mutex::new(Transports::new()));
 
-        let result = Self { receiver, streams };
+        let result = Self {
+            receiver,
+            streams,
+            context: Mutex::new(Context { nickname: "".into() }),
+        };
 
         let streams = result.streams.clone();
         task::spawn(async {
@@ -137,7 +146,11 @@ impl Server {
                 None
             }
             "CAP" => None,
-            "NICK" => None,
+            "NICK" => {
+                self.context.lock().await.nickname = message.args[1].clone();
+
+                None
+            }
             "PING" => {
                 let response = IRCMessage::new(Some(Self::server_prefix()), "PONG", vec![message.args[0].as_ref()]);
 
