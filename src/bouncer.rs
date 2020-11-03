@@ -1,20 +1,21 @@
 use async_std::io::Result;
 use futures::{select, FutureExt, StreamExt};
 
-use crate::irc::Client;
-use crate::irc::Server;
-
+use crate::client::Client;
+use crate::irc::IRCClient;
+use crate::irc::IRCServer;
 use crate::message::Message;
+use crate::server::Server;
 
 pub struct Bouncer {
-    client: Client,
-    server: Server,
+    client: Box<dyn Client>,
+    server: Box<dyn Server>,
 }
 
 impl Bouncer {
     pub async fn run(host: String, port: u16, server_port: u16) -> Result<()> {
-        let client = Client::new(host, port).await.unwrap();
-        let server = Server::new(server_port).await.unwrap();
+        let client = Box::new(IRCClient::new(host, port).await.unwrap());
+        let server = Box::new(IRCServer::new(server_port).await.unwrap());
 
         let bouncer = Self { client, server };
 

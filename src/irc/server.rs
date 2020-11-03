@@ -6,7 +6,8 @@ use async_std::{
     sync::{channel, Mutex, Receiver, Sender},
     task,
 };
-use futures::{FutureExt, Stream, StreamExt};
+use async_trait::async_trait;
+use futures::{stream::BoxStream, FutureExt, StreamExt};
 use log::{debug, error};
 
 use super::{
@@ -14,6 +15,7 @@ use super::{
     transport::Transport,
 };
 use crate::message::Message;
+use crate::server::Server;
 
 struct Transports {
     data: HashMap<u32, Transport>,
@@ -50,13 +52,13 @@ struct Context {
     nickname: String,
 }
 
-pub struct Server {
+pub struct IRCServer {
     receiver: Receiver<(IRCMessage, Transport)>,
     streams: Arc<Mutex<Transports>>,
     context: Mutex<Context>,
 }
 
-impl Server {
+impl IRCServer {
     pub async fn new(port: u16) -> Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
@@ -102,25 +104,6 @@ impl Server {
         }
 
         transports.lock().await.remove(index);
-
-        Ok(())
-    }
-
-    pub fn stream<'a>(&'a self) -> impl Stream<Item = Message> + 'a {
-        self.receiver
-            .clone()
-            .filter_map(move |(message, sender)| async move { self.handle_message(&sender, message).await.unwrap() }.boxed())
-    }
-
-    pub async fn broadcast(&self, message: Message) -> Result<()> {
-        let message = self.convert_message(message);
-        debug!("Broadcast: {}", message);
-
-        let mut streams = self.streams.lock().await;
-
-        for stream in streams.iter_mut() {
-            stream.send_message(&message).await?;
-        }
 
         Ok(())
     }
@@ -202,5 +185,28 @@ impl Server {
 
     fn server_prefix() -> IRCPrefix {
         IRCPrefix::Server("irc.proxy".into())
+    }
+}
+
+#[async_trait]
+impl Server for IRCServer {
+    fn stream(&self) -> BoxStream<Message> {
+        self.receiver
+            .clone()
+            .filter_map(move |(message, sender)| async move { self.handle_message(&sender, message).await.unwrap() }.boxed())
+            .boxed()
+    }
+
+    async fn broadcast(&self, message: Message) -> Result<()> {
+        let message = self.convert_message(message);
+        debug!("Broadcast: {}", message);
+
+        let mut streams = self.streams.lock().await;
+
+        for stream in streams.iter_mut() {
+            stream.send_message(&message).await?;
+        }
+
+        Ok(())
     }
 }
