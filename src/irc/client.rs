@@ -88,17 +88,17 @@ impl IRCClient {
         })
     }
 
-    fn convert_message(&self, message: Message) -> IRCMessage {
+    fn convert_message(&self, message: &Message) -> IRCMessage {
         match message {
             Message::Chat { channel, content, .. } => IRCMessage {
                 prefix: None,
                 command: "PRIVMSG".into(),
-                args: vec![channel, content],
+                args: vec![channel.into(), content.into()],
             },
             Message::JoinChannel { channel } => IRCMessage {
                 prefix: None,
                 command: "JOIN".into(),
-                args: vec![channel],
+                args: vec![channel.into()],
             },
             _ => unreachable!(),
         }
@@ -114,7 +114,7 @@ impl Client for IRCClient {
             .boxed()
     }
 
-    async fn send_message(&self, message: Message) -> Result<()> {
+    async fn send_message(&self, message: &Message) -> Result<()> {
         let message = self.convert_message(message);
         debug!("To Origin: {}", message);
 
