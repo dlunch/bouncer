@@ -1,5 +1,5 @@
 use async_std::io::Result;
-use futures::{future::try_join_all, select, stream::select_all, FutureExt, StreamExt};
+use futures::{future, select, stream, FutureExt, StreamExt};
 
 use crate::client::Client;
 use crate::irc::IRCClient;
@@ -20,7 +20,7 @@ impl Bouncer {
         let bouncer = Self { client, servers };
 
         let mut client_stream = bouncer.client.stream().fuse();
-        let mut server_stream = select_all(bouncer.servers.iter().map(|x| x.stream())).fuse();
+        let mut server_stream = stream::select_all(bouncer.servers.iter().map(|x| x.stream())).fuse();
 
         loop {
             let res = select! {
@@ -35,7 +35,7 @@ impl Bouncer {
     async fn handle_client_message(&self, message: Message) -> Result<()> {
         let futures = self.servers.iter().map(|x| x.broadcast(&message));
 
-        try_join_all(futures).await?;
+        future::try_join_all(futures).await?;
 
         Ok(())
     }
