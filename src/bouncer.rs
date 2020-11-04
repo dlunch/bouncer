@@ -1,5 +1,5 @@
 use async_std::io::Result;
-use futures::{select, FutureExt, StreamExt};
+use futures::{future::try_join_all, select, stream::select_all, FutureExt, StreamExt};
 
 use crate::client::Client;
 use crate::irc::IRCClient;
@@ -9,18 +9,18 @@ use crate::server::Server;
 
 pub struct Bouncer {
     client: Box<dyn Client>,
-    server: Box<dyn Server>,
+    servers: Vec<Box<dyn Server>>,
 }
 
 impl Bouncer {
     pub async fn run(host: String, port: u16, server_port: u16) -> Result<()> {
         let client = Box::new(IRCClient::new(host, port).await.unwrap());
-        let server = Box::new(IRCServer::new(server_port).await.unwrap());
+        let servers: Vec<Box<dyn Server>> = vec![Box::new(IRCServer::new(server_port).await.unwrap())];
 
-        let bouncer = Self { client, server };
+        let bouncer = Self { client, servers };
 
         let mut client_stream = bouncer.client.stream().fuse();
-        let mut server_stream = bouncer.server.stream().fuse();
+        let mut server_stream = select_all(bouncer.servers.iter().map(|x| x.stream())).fuse();
 
         loop {
             let res = select! {
@@ -33,10 +33,14 @@ impl Bouncer {
     }
 
     async fn handle_client_message(&self, message: Message) -> Result<()> {
-        self.server.broadcast(message).await
+        let futures = self.servers.iter().map(|x| x.broadcast(&message));
+
+        try_join_all(futures).await?;
+
+        Ok(())
     }
 
     async fn handle_server_message(&self, message: Message) -> Result<()> {
-        self.client.send_message(message).await
+        self.client.send_message(&message).await
     }
 }

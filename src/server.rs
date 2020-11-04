@@ -9,5 +9,5 @@ use crate::message::Message;
 #[async_trait]
 pub trait Server: Sync + Send {
     fn stream(&self) -> BoxStream<Message>;
-    async fn broadcast(&self, message: Message) -> Result<()>;
+    async fn broadcast(&self, message: &Message) -> Result<()>;
 }

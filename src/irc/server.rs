@@ -157,27 +157,27 @@ impl IRCServer {
         })
     }
 
-    fn convert_message(&self, message: Message) -> IRCMessage {
+    fn convert_message(&self, message: &Message) -> IRCMessage {
         match message {
             Message::Chat { sender, channel, content } => IRCMessage {
-                prefix: Some(IRCPrefix::from_raw(sender)),
+                prefix: Some(IRCPrefix::from_raw(sender.into())),
                 command: "PRIVMSG".into(),
-                args: vec![channel, content],
+                args: vec![channel.into(), content.into()],
             },
             Message::JoinedChannel { channel, sender } => IRCMessage {
-                prefix: Some(IRCPrefix::from_raw(sender)),
+                prefix: Some(IRCPrefix::from_raw(sender.into())),
                 command: "JOIN".into(),
-                args: vec![channel],
+                args: vec![channel.into()],
             },
             Message::NamesList { channel, users } => IRCMessage {
                 prefix: Some(Self::server_prefix()),
                 command: IRCReply::RPL_NAMREPLY.into(),
-                args: iter::once(channel).chain(users.into_iter()).collect::<Vec<_>>(),
+                args: iter::once(channel.into()).chain(users.iter().cloned()).collect::<Vec<_>>(),
             },
             Message::NamesEnd { channel } => IRCMessage {
                 prefix: Some(Self::server_prefix()),
                 command: IRCReply::RPL_ENDOFNAMES.into(),
-                args: vec![channel, "End of /NAMES list.".into()],
+                args: vec![channel.into(), "End of /NAMES list.".into()],
             },
             _ => unreachable!(),
         }
@@ -197,7 +197,7 @@ impl Server for IRCServer {
             .boxed()
     }
 
-    async fn broadcast(&self, message: Message) -> Result<()> {
+    async fn broadcast(&self, message: &Message) -> Result<()> {
         let message = self.convert_message(message);
         debug!("Broadcast: {}", message);
 
