@@ -10,14 +10,14 @@ use super::{
     message::{Message as IRCMessage, Reply as IRCReply},
     transport::Transport,
 };
-use crate::client::Client;
 use crate::message::Message;
+use crate::source::Source;
 
-pub struct IRCClient {
+pub struct Client {
     transport: Transport,
 }
 
-impl IRCClient {
+impl Client {
     pub async fn new(host: String, port: u16) -> Result<Self> {
         let addr = (host.as_ref(), port).to_socket_addrs().await?.next().unwrap();
         let stream = TcpStream::connect(addr).await?;
@@ -106,7 +106,7 @@ impl IRCClient {
 }
 
 #[async_trait]
-impl Client for IRCClient {
+impl Source for Client {
     fn stream(&self) -> BoxStream<Message> {
         self.transport
             .stream()

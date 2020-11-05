@@ -15,7 +15,7 @@ use super::{
     transport::Transport,
 };
 use crate::message::Message;
-use crate::server::Server;
+use crate::sink::Sink;
 
 struct Transports {
     data: HashMap<u32, Transport>,
@@ -52,13 +52,13 @@ struct Context {
     nickname: String,
 }
 
-pub struct IRCServer {
+pub struct Server {
     receiver: Receiver<(IRCMessage, Transport)>,
     streams: Arc<Mutex<Transports>>,
     context: Mutex<Context>,
 }
 
-impl IRCServer {
+impl Server {
     pub async fn new(port: u16) -> Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
@@ -189,7 +189,7 @@ impl IRCServer {
 }
 
 #[async_trait]
-impl Server for IRCServer {
+impl Sink for Server {
     fn stream(&self) -> BoxStream<Message> {
         self.receiver
             .clone()

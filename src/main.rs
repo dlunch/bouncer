@@ -1,8 +1,8 @@
 mod bouncer;
-mod client;
 mod irc;
 mod message;
-mod server;
+mod sink;
+mod source;
 
 use std::error::Error;
 
