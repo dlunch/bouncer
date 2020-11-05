@@ -7,7 +7,7 @@ use futures::stream::BoxStream;
 use crate::message::Message;
 
 #[async_trait]
-pub trait Client: Sync + Send {
+pub trait Sink: Sync + Send {
     fn stream(&self) -> BoxStream<Message>;
-    async fn send_message(&self, message: &Message) -> Result<()>;
+    async fn broadcast(&self, message: &Message) -> Result<()>;
 }
