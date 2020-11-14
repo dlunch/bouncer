@@ -12,7 +12,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 RUN rustup component add rustfmt
 
-RUN apt-get install build-essential -y
+RUN apt-get install build-essential protobuf-compiler -y
 
 WORKDIR /src
 
