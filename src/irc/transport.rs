@@ -13,7 +13,7 @@ impl Transport {
         Self { stream }
     }
 
-    pub fn stream<'a>(&'a self) -> impl Stream<Item = Message> + 'a {
+    pub fn stream(&self) -> impl Stream<Item = Message> + '_ {
         let reader = BufReader::new(&self.stream);
 
         reader.lines().map(move |x| Message::from_raw(x.unwrap()))
