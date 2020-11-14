@@ -1,6 +1,7 @@
 #syntax=docker/dockerfile:experimental
 
 FROM rust:stretch as builder
+RUN rustup component add rustfmt
 
 WORKDIR /src
 
