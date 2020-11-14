@@ -1,4 +1,5 @@
 mod bouncer;
+mod grpc;
 mod history;
 mod irc;
 mod message;

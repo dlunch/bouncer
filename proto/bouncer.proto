@@ -1,0 +1,14 @@
+syntax = "proto3";
+package bouncer;
+
+message LoginRequest {
+    string username = 1;
+}
+
+message LoginResponse {
+    string token = 1;
+}
+
+service Bouncer {
+    rpc Login(LoginRequest) returns (LoginResponse);
+}
