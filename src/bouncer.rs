@@ -1,9 +1,9 @@
 use async_std::io::Result;
 use futures::{future, select, stream, FutureExt, StreamExt};
 
+use crate::grpc;
 use crate::history::History;
-use crate::irc::Client;
-use crate::irc::Server;
+use crate::irc;
 use crate::message::Message;
 use crate::sink::Sink;
 use crate::source::Source;
@@ -15,8 +15,12 @@ pub struct Bouncer {
 
 impl Bouncer {
     pub async fn run(host: String, port: u16, server_port: u16) -> Result<()> {
-        let client = Box::new(Client::new(host, port).await.unwrap());
-        let sinks: Vec<Box<dyn Sink>> = vec![Box::new(Server::new(server_port).await.unwrap()), Box::new(History::new())];
+        let client = Box::new(irc::Client::new(host, port).await.unwrap());
+        let sinks: Vec<Box<dyn Sink>> = vec![
+            Box::new(irc::Server::new(server_port).await.unwrap()),
+            Box::new(History::new()),
+            Box::new(grpc::Server::new()),
+        ];
 
         let bouncer = Self { source: client, sinks };
 
