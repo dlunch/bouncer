@@ -19,7 +19,7 @@ impl Bouncer {
         let sinks: Vec<Box<dyn Sink>> = vec![
             Box::new(irc::Server::new(server_port).await.unwrap()),
             Box::new(History::new()),
-            Box::new(grpc::Server::new()),
+            Box::new(grpc::Server::new(12345)),
         ];
 
         let bouncer = Self { source: client, sinks };
