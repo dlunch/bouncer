@@ -1,5 +1,4 @@
-use async_std::io;
-use async_std::task::spawn;
+use async_std::{io, net::Ipv4Addr, task::spawn};
 use async_trait::async_trait;
 use futures::{
     stream::{self, BoxStream},
@@ -30,12 +29,12 @@ impl pb::bouncer_server::Bouncer for GrpcServer {
 pub struct Server {}
 
 impl Server {
-    pub fn new() -> Self {
-        spawn(async {
-            let addr = "[::1]:50051".parse().unwrap();
+    pub fn new(port: u16) -> Self {
+        spawn(async move {
+            let addr = (Ipv4Addr::new(0, 0, 0, 0), port);
 
             let server = pb::bouncer_server::BouncerServer::with_interceptor(GrpcServer {}, Server::check_auth);
-            transport::Server::builder().add_service(server).serve(addr).await.unwrap();
+            transport::Server::builder().add_service(server).serve(addr.into()).await.unwrap();
         });
 
         Self {}
