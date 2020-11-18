@@ -1,9 +1,10 @@
-import * as path from 'path';
 import * as webpack from 'webpack';
+import * as path from 'path';
 import * as RawWasmPackPlugin from '@wasm-tool/wasm-pack-plugin';
 import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
 import * as HtmlEntryLoader from 'html-entry-loader';
+import * as GrpcWebPlugin from 'grpc-webpack-plugin';
 
 const WasmPackPlugin = RawWasmPackPlugin as unknown as new (options: RawWasmPackPlugin.WasmPackPluginOptions) => webpack.WebpackPluginInstance;
 
@@ -13,7 +14,7 @@ const dist = path.resolve(root, 'client/dist');
 const configuration: webpack.Configuration = {
   context: root,
   entry: {
-    model_viewer: 'client/client.html',
+    model_viewer: 'client/src/client.html',
   },
   experiments: {
     asyncWebAssembly: true,
@@ -61,9 +62,17 @@ const configuration: webpack.Configuration = {
   plugins: [
     new HtmlEntryLoader.EntryExtractPlugin(),
 
+    new GrpcWebPlugin({
+      protoPath: path.resolve(root, 'proto'),
+      protoFiles: ['bouncer.proto'],
+      outputType: 'grpc-web',
+      importStyle: 'typescript',
+      binary: true,
+      outDir: path.resolve('client/src/proto'),
+    }),
     new WasmPackPlugin({
-      crateDirectory: path.resolve(root, 'client'),
-      outDir: path.resolve(root, 'client/pkg'),
+      crateDirectory: path.resolve(root, 'client/wasm'),
+      outDir: path.resolve(root, 'client/wasm/pkg'),
       outName: 'index',
     }),
     new CleanWebpackPlugin(),
