@@ -55,6 +55,9 @@ const configuration: webpack.Configuration = {
   resolve: {
     extensions: ['.ts', '.js'],
     plugins: [new TsconfigPathsPlugin()],
+    alias: {
+      proto: path.resolve(root, 'client/src/proto'),
+    },
   },
   devServer: {
     contentBase: dist,
@@ -69,6 +72,7 @@ const configuration: webpack.Configuration = {
       importStyle: 'typescript',
       binary: true,
       outDir: path.resolve('client/src/proto'),
+      extra: [`--js_out=import_style=commonjs,binary:${path.resolve('client/src/proto')}`],
     }),
     new WasmPackPlugin({
       crateDirectory: path.resolve(root, 'client/wasm'),

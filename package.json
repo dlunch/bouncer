@@ -43,5 +43,8 @@
     "webpack-cli": "^4.1.0",
     "webpack-dev-server": "^3.11.0",
     "webpack-merge": "^5.1.4"
+  },
+  "dependencies": {
+    "google-protobuf": "^3.14.0"
   }
 }
