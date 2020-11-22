@@ -14,7 +14,7 @@ const dist = path.resolve(root, 'client/dist');
 const configuration: webpack.Configuration = {
   context: root,
   entry: {
-    model_viewer: 'client/src/client.html',
+    client: 'client/src/client.html',
   },
   experiments: {
     asyncWebAssembly: true,
