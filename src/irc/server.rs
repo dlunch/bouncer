@@ -1,9 +1,10 @@
 use std::{collections::HashMap, iter, sync::Arc};
 
 use async_std::{
+    channel::{unbounded, Receiver, Sender},
     io::Result,
     net::{Ipv4Addr, TcpListener},
-    sync::{channel, Mutex, Receiver, Sender},
+    sync::Mutex,
     task,
 };
 use async_trait::async_trait;
@@ -62,7 +63,7 @@ impl Server {
     pub async fn new(port: u16) -> Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
-        let (sender, receiver) = channel(10);
+        let (sender, receiver) = unbounded();
         let streams = Arc::new(Mutex::new(Transports::new()));
 
         let result = Self {
@@ -100,7 +101,7 @@ impl Server {
 
         let mut stream = transport.stream();
         while let Some(message) = stream.next().await {
-            sender.send((message, transport.clone())).await;
+            sender.send((message, transport.clone())).await.unwrap();
         }
 
         transports.lock().await.remove(index);
