@@ -1,5 +1,3 @@
 target
-**/dist
-**/pkg
-**/node_modules
-data
+node_modules
+client

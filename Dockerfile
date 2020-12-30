@@ -20,6 +20,6 @@ COPY . .
 RUN --mount=type=cache,target=/src/target cargo install --path . --locked --bins --root build
 
 FROM debian:stretch-slim
-COPY --from=builder /src/build/bin /bouncer
+COPY --from=builder /src/build/bin /server
 
 EXPOSE 6667
