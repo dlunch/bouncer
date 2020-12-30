@@ -17,7 +17,7 @@ RUN apt-get install build-essential protobuf-compiler -y
 WORKDIR /src
 
 COPY . .
-RUN --mount=type=cache,target=/src/target cargo install --path . --locked --bins --root build
+RUN --mount=type=cache,target=/src/target cargo install --path server --locked --bins --root build
 
 FROM debian:stretch-slim
 COPY --from=builder /src/build/bin /server
