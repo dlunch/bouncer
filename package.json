@@ -24,6 +24,7 @@
     "eslint-config-airbnb-base": "^14.1.0",
     "eslint-import-resolver-typescript": "^2.3.0",
     "eslint-plugin-import": "^2.20.2",
+    "google-protobuf": "^3.14.0",
     "grpc-web": "^1.2.1",
     "grpc-webpack-plugin": "^0.2.78",
     "html-entry-loader": "git+https://github.com/dlunch/html-entry-loader.git",
@@ -44,8 +45,5 @@
     "webpack-cli": "^4.1.0",
     "webpack-dev-server": "^3.11.0",
     "webpack-merge": "^5.1.4"
-  },
-  "dependencies": {
-    "google-protobuf": "^3.14.0"
   }
 }

@@ -54,7 +54,8 @@ const configuration: webpack.Configuration = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
-    plugins: [new TsconfigPathsPlugin()],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    plugins: [new TsconfigPathsPlugin() as any],
     alias: {
       proto: path.resolve(root, 'client/src/proto'),
     },
