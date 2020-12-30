@@ -34,9 +34,7 @@ impl Client {
         Ok(result)
     }
 
-    fn on_connected(&self) -> Result<()> {
-        Ok(())
-    }
+    fn on_connected(&self) {}
 
     async fn handle_message(&self, message: &IRCMessage) -> Result<Option<Message>> {
         debug!("From Origin: {}", message);
@@ -51,7 +49,7 @@ impl Client {
             }
             IRCReply::RPL_ENDOFMOTD | IRCReply::ERR_NOMOTD => {
                 // RPL_ENDOFMOTD | ERR_NOMOTD
-                self.on_connected()?;
+                self.on_connected();
 
                 None
             }
