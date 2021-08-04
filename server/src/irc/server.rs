@@ -125,7 +125,7 @@ impl Server {
                     vec!["testtest", "MOTD File is missing"],
                 );
 
-                self.send_response(&sender, response).await?;
+                self.send_response(sender, response).await?;
 
                 None
             }
@@ -138,7 +138,7 @@ impl Server {
             "PING" => {
                 let response = IRCMessage::new(Some(Self::server_prefix()), "PONG", vec![message.args[0].as_ref()]);
 
-                self.send_response(&sender, response).await?;
+                self.send_response(sender, response).await?;
 
                 None
             }
