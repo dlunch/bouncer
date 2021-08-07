@@ -1,21 +1,17 @@
-import * as webpack from 'webpack';
-import merge from 'webpack-merge';
-import common from './webpack.config.common';
+const { merge } = require('webpack-merge');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const common = require('./webpack.config.common');
 
 export default merge(common, {
-  mode: 'development',
-  devtool: 'source-map',
-  devServer: {
-    contentBase: './dist',
-    hot: true,
-  },
+  mode: 'production',
+  devtool: undefined,
   module: {
     rules: [
       {
         test: /\.less$/,
         use: [
           {
-            loader: 'style-loader',
+            loader: MiniCssExtractPlugin.loader,
           },
           {
             loader: 'css-loader',
@@ -30,5 +26,5 @@ export default merge(common, {
       },
     ],
   },
-  plugins: [new webpack.HotModuleReplacementPlugin()],
+  plugins: [new MiniCssExtractPlugin()],
 });
