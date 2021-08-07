@@ -1,17 +1,14 @@
-import * as webpack from 'webpack';
-import * as path from 'path';
-import * as RawWasmPackPlugin from '@wasm-tool/wasm-pack-plugin';
-import { CleanWebpackPlugin } from 'clean-webpack-plugin';
-import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
-import * as HtmlEntryLoader from 'html-entry-loader';
-import * as GrpcWebPlugin from 'grpc-webpack-plugin';
-
-const WasmPackPlugin = RawWasmPackPlugin as unknown as new (options: RawWasmPackPlugin.WasmPackPluginOptions) => webpack.WebpackPluginInstance;
+const path = require('path');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const HtmlEntryLoader = require('html-entry-loader');
+const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
+const GrpcWebPlugin = require('grpc-webpack-plugin');
 
 const root = path.resolve(__dirname, '..');
 const dist = path.resolve(root, 'client/dist');
 
-const configuration: webpack.Configuration = {
+module.exports = {
   context: root,
   entry: {
     client: 'client/src/client.html',
@@ -54,8 +51,7 @@ const configuration: webpack.Configuration = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    plugins: [new TsconfigPathsPlugin() as any],
+    plugins: [new TsconfigPathsPlugin()],
     alias: {
       proto: path.resolve(root, 'client/src/proto'),
     },
@@ -83,5 +79,3 @@ const configuration: webpack.Configuration = {
     new CleanWebpackPlugin(),
   ],
 };
-
-export default configuration;
