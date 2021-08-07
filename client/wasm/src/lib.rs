@@ -2,17 +2,16 @@ extern crate alloc;
 
 mod app;
 
-use wasm_bindgen::prelude::wasm_bindgen;
+use typescript_wasm_bindgen::typescript_wasm_bindgen;
+use wasm_bindgen::prelude::{wasm_bindgen, JsValue};
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-#[wasm_bindgen(module = "proto/bouncer_grpc_web_pb")]
-extern "C" {
-    type BouncerClient;
+pub mod bouncer {
+    use super::*;
 
-    #[wasm_bindgen(constructor)]
-    fn new(hostname: &str) -> BouncerClient;
+    typescript_wasm_bindgen!("client/src/proto/bouncer_grpc_web_pb.d.ts", "proto/bouncer_grpc_web_pb");
 }
 
 #[wasm_bindgen(start)]
@@ -22,7 +21,7 @@ pub fn main() {
     #[cfg(debug_assertions)]
     console_log::init_with_level(log::Level::Trace).unwrap();
 
-    let _ = BouncerClient::new("test");
+    let _ = bouncer::BouncerClient::new("test", JsValue::NULL, JsValue::NULL);
 
     yew::start_app::<app::App>();
 }
