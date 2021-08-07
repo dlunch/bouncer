@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-#[wasm_bindgen(module = "proto/BouncerServiceClientPb")]
+#[wasm_bindgen(module = "proto/bouncer_grpc_web_pb")]
 extern "C" {
     type BouncerClient;
 
