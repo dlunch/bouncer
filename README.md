@@ -6,7 +6,7 @@ Multi IM Relay
 
 - IRC
 
-## Planning
+## Planned Protocols
 
 - Slack
 - Discord
