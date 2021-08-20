@@ -1,6 +1,7 @@
 use async_std::{
     io::Result,
     net::{TcpStream, ToSocketAddrs},
+    sync::Mutex,
 };
 use async_trait::async_trait;
 use futures::{stream::BoxStream, FutureExt, StreamExt};
@@ -13,8 +14,14 @@ use super::{
 use crate::message::Message;
 use crate::source::Source;
 
+// TODO lazy name
+struct Context {
+    names: Vec<String>,
+}
+
 pub struct Client {
     transport: Transport,
+    context: Mutex<Context>,
 }
 
 impl Client {
@@ -23,7 +30,10 @@ impl Client {
         let stream = TcpStream::connect(addr).await?;
 
         let transport = Transport::new(stream);
-        let result = Self { transport };
+        let result = Self {
+            transport,
+            context: Mutex::new(Context { names: Vec::new() }),
+        };
 
         result
             .transport
@@ -63,21 +73,25 @@ impl Client {
                 sender: message.prefix.as_ref().unwrap().raw().into(),
             }),
             IRCReply::RPL_NAMREPLY => {
-                if let [_client, _symbol, channel, items] = message.args.as_slice() {
-                    Some(Message::NamesList {
-                        channel: channel.clone(),
-                        users: items
-                            .split(' ')
-                            .filter_map(|x| if !x.is_empty() { Some(x.to_owned()) } else { None })
-                            .collect::<Vec<_>>(),
-                    })
+                if let [_client, _symbol, _channel, items] = message.args.as_slice() {
+                    let mut context = self.context.lock().await;
+                    context
+                        .names
+                        .extend(items.split(' ').filter_map(|x| if !x.is_empty() { Some(x.to_owned()) } else { None }));
+
+                    None
                 } else {
                     panic!()
                 }
             }
-            IRCReply::RPL_ENDOFNAMES => Some(Message::NamesEnd {
-                channel: message.args[1].clone(),
-            }),
+            IRCReply::RPL_ENDOFNAMES => {
+                let mut context = self.context.lock().await;
+
+                let channel = message.args[1].to_owned();
+                let names = std::mem::take(&mut context.names);
+
+                Some(Message::UsersList { channel, users: names })
+            }
             _ => {
                 error!("Unhandled {}", message.command);
 
