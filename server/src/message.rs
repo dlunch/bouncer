@@ -5,10 +5,9 @@ use serde::{Deserialize, Serialize};
 pub enum Message {
     // Both directions
     Chat { sender: String, channel: String, content: String },
-    // IRC to Client
+    // Source to Sink
     JoinedChannel { sender: String, channel: String },
-    NamesList { channel: String, users: Vec<String> },
-    NamesEnd { channel: String },
-    // Client to IRC
+    UsersList { channel: String, users: Vec<String> },
+    // Sink to Source
     JoinChannel { channel: String },
 }

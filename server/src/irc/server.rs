@@ -158,28 +158,31 @@ impl Server {
         })
     }
 
-    fn convert_message(&self, message: &Message) -> IRCMessage {
+    fn convert_message(&self, message: &Message) -> Vec<IRCMessage> {
         match message {
-            Message::Chat { sender, channel, content } => IRCMessage {
+            Message::Chat { sender, channel, content } => vec![IRCMessage {
                 prefix: Some(IRCPrefix::from_raw(sender.into())),
                 command: "PRIVMSG".into(),
                 args: vec![channel.into(), content.into()],
-            },
-            Message::JoinedChannel { channel, sender } => IRCMessage {
+            }],
+            Message::JoinedChannel { channel, sender } => vec![IRCMessage {
                 prefix: Some(IRCPrefix::from_raw(sender.into())),
                 command: "JOIN".into(),
                 args: vec![channel.into()],
-            },
-            Message::NamesList { channel, users } => IRCMessage {
-                prefix: Some(Self::server_prefix()),
-                command: IRCReply::RPL_NAMREPLY.into(),
-                args: iter::once(channel.into()).chain(users.iter().cloned()).collect::<Vec<_>>(),
-            },
-            Message::NamesEnd { channel } => IRCMessage {
-                prefix: Some(Self::server_prefix()),
-                command: IRCReply::RPL_ENDOFNAMES.into(),
-                args: vec![channel.into(), "End of /NAMES list.".into()],
-            },
+            }],
+            Message::UsersList { channel, users } => vec![
+                IRCMessage {
+                    prefix: Some(Self::server_prefix()),
+                    command: IRCReply::RPL_NAMREPLY.into(),
+                    args: iter::once(channel.into()).chain(users.iter().cloned()).collect::<Vec<_>>(),
+                },
+                IRCMessage {
+                    prefix: Some(Self::server_prefix()),
+                    command: IRCReply::RPL_ENDOFNAMES.into(),
+                    args: vec![channel.into(), "End of /NAMES list.".into()],
+                },
+            ],
+
             _ => unreachable!(),
         }
     }
@@ -199,13 +202,17 @@ impl Sink for Server {
     }
 
     async fn broadcast(&self, message: &Message) -> Result<()> {
-        let message = self.convert_message(message);
-        debug!("Broadcast: {}", message);
+        let messages = self.convert_message(message);
+        for message in &messages {
+            debug!("Broadcast: {}", message);
+        }
 
         let mut streams = self.streams.lock().await;
 
         for stream in streams.iter_mut() {
-            stream.send_message(&message).await?;
+            for message in &messages {
+                stream.send_message(&message).await?;
+            }
         }
 
         Ok(())
