@@ -211,7 +211,7 @@ impl Sink for Server {
 
         for stream in streams.iter_mut() {
             for message in &messages {
-                stream.send_message(&message).await?;
+                stream.send_message(message).await?;
             }
         }
 
