@@ -1,8 +1,8 @@
 use std::boxed::Box;
 
-use tokio::io::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
+use tokio::io::Result;
 
 use crate::message::Message;
 
