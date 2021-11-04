@@ -1,9 +1,9 @@
-use tokio::io::Result;
 use async_trait::async_trait;
 use futures::{
     stream::{self, BoxStream},
     StreamExt,
 };
+use tokio::io::Result;
 
 use crate::message::Message;
 use crate::sink::Sink;
