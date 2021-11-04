@@ -1,6 +1,6 @@
 use std::boxed::Box;
 
-use async_std::io::Result;
+use tokio::io::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 

@@ -12,7 +12,7 @@ use clap::{App, Arg};
 
 use bouncer::Bouncer;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     pretty_env_logger::formatted_timed_builder()
         .filter(Some("bouncer"), log::LevelFilter::Debug)

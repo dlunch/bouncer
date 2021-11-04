@@ -1,11 +1,7 @@
-use async_std::{
-    io::Result,
-    net::{TcpStream, ToSocketAddrs},
-    sync::Mutex,
-};
 use async_trait::async_trait;
 use futures::{stream::BoxStream, FutureExt, StreamExt};
 use log::{debug, error};
+use tokio::{io::Result, net::TcpStream, sync::Mutex};
 
 use super::{
     message::{Message as IRCMessage, Reply as IRCReply},
@@ -26,8 +22,7 @@ pub struct Client {
 
 impl Client {
     pub async fn new(host: String, port: u16) -> Result<Self> {
-        let addr = (host.as_ref(), port).to_socket_addrs().await?.next().unwrap();
-        let stream = TcpStream::connect(addr).await?;
+        let stream = TcpStream::connect((host.as_ref(), port)).await?;
 
         let transport = Transport::new(stream);
         let result = Self {
@@ -119,9 +114,10 @@ impl Client {
 
 #[async_trait]
 impl Source for Client {
-    fn stream(&self) -> BoxStream<Message> {
+    async fn stream(&self) -> BoxStream<Message> {
         self.transport
             .stream()
+            .await
             .filter_map(move |message| async move { self.handle_message(&message).await.unwrap() }.boxed())
             .boxed()
     }

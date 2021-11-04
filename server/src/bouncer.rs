@@ -1,5 +1,5 @@
-use async_std::io::Result;
 use futures::{future, select, stream, FutureExt, StreamExt};
+use tokio::io::Result;
 
 use crate::grpc;
 use crate::history::History;
@@ -24,7 +24,7 @@ impl Bouncer {
 
         let bouncer = Self { source: client, sinks };
 
-        let mut source_stream = bouncer.source.stream().fuse();
+        let mut source_stream = bouncer.source.stream().await.fuse();
         let mut sinks_stream = stream::select_all(bouncer.sinks.iter().map(|x| x.stream())).fuse();
 
         loop {
