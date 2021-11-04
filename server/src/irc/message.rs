@@ -10,7 +10,7 @@ pub mod Reply {
     pub const ERR_NOMOTD: &str = "422";
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum Prefix {
     Server(String),
     User(String),
@@ -33,6 +33,7 @@ impl Prefix {
     }
 }
 
+#[derive(Clone)]
 pub struct Message {
     pub prefix: Option<Prefix>,
     pub command: String,

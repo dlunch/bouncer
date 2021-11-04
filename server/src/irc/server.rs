@@ -1,15 +1,18 @@
-use std::{collections::HashMap, iter, sync::Arc};
+use std::{collections::HashMap, iter, net::Ipv4Addr, sync::Arc};
 
-use async_std::{
-    channel::{unbounded, Receiver, Sender},
-    io::Result,
-    net::{Ipv4Addr, TcpListener},
-    sync::Mutex,
-    task,
-};
 use async_trait::async_trait;
 use futures::{stream::BoxStream, FutureExt, StreamExt};
 use log::{debug, error};
+use tokio::{
+    io::Result,
+    net::TcpListener,
+    sync::{
+        broadcast::{channel, Sender},
+        Mutex,
+    },
+    task,
+};
+use tokio_stream::wrappers::{BroadcastStream, TcpListenerStream};
 
 use super::{
     message::{Message as IRCMessage, Prefix as IRCPrefix, Reply as IRCReply},
@@ -54,7 +57,7 @@ struct Context {
 }
 
 pub struct Server {
-    receiver: Receiver<(IRCMessage, Transport)>,
+    sender: Sender<(IRCMessage, Transport)>,
     streams: Arc<Mutex<Transports>>,
     context: Mutex<Context>,
 }
@@ -63,11 +66,11 @@ impl Server {
     pub async fn new(port: u16) -> Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await?;
 
-        let (sender, receiver) = unbounded();
+        let (sender, _) = channel(16);
         let streams = Arc::new(Mutex::new(Transports::new()));
 
         let result = Self {
-            receiver,
+            sender: sender.clone(),
             streams,
             context: Mutex::new(Context { nickname: "".into() }),
         };
@@ -81,7 +84,7 @@ impl Server {
     }
 
     async fn accept_loop(listener: TcpListener, sender: Sender<(IRCMessage, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
-        let mut incoming = listener.incoming();
+        let mut incoming = TcpListenerStream::new(listener);
 
         while let Some(stream) = incoming.next().await {
             let transport = Transport::new(stream?);
@@ -99,9 +102,9 @@ impl Server {
     async fn read_loop(transport: Transport, sender: Sender<(IRCMessage, Transport)>, transports: Arc<Mutex<Transports>>) -> Result<()> {
         let index = transports.lock().await.insert(&transport);
 
-        let mut stream = transport.stream();
+        let mut stream = transport.stream().await;
         while let Some(message) = stream.next().await {
-            sender.send((message, transport.clone())).await.unwrap();
+            sender.send((message, transport.clone())).unwrap_or(0); // TODO error handling
         }
 
         transports.lock().await.remove(index);
@@ -195,9 +198,14 @@ impl Server {
 #[async_trait]
 impl Sink for Server {
     fn stream(&self) -> BoxStream<Message> {
-        self.receiver
-            .clone()
-            .filter_map(move |(message, sender)| async move { self.handle_message(&sender, message).await.unwrap() }.boxed())
+        BroadcastStream::new(self.sender.subscribe())
+            .filter_map(move |x| {
+                async move {
+                    let (message, sender) = x.unwrap(); // TODO error handling
+                    self.handle_message(&sender, message).await.unwrap()
+                }
+                .boxed()
+            })
             .boxed()
     }
 

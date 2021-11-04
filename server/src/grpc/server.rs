@@ -1,9 +1,11 @@
-use async_std::{io, net::Ipv4Addr, task::spawn};
+use std::net::Ipv4Addr;
+
 use async_trait::async_trait;
 use futures::{
     stream::{self, BoxStream},
     StreamExt,
 };
+use tokio::{io, task::spawn};
 
 use crate::message::Message;
 use crate::sink::Sink;
