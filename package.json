@@ -19,7 +19,7 @@
     "eslint-import-resolver-typescript": "^2.5",
     "eslint-plugin-import": "^2.25",
     "google-protobuf": "^3.19",
-    "grpc-web": "^1.3.0",
+    "grpc-web": "^1.4.2",
     "html-entry-loader": "git+https://github.com/dlunch/html-entry-loader.git",
     "less": "^4.1",
     "less-loader": "^10.2",
