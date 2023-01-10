@@ -8,7 +8,7 @@
     "start": "webpack serve --config webpack/webpack.config.dev.js"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.3",
+    "@typescript-eslint/eslint-plugin": "^5.48",
     "@typescript-eslint/parser": "^5.3",
     "@wasm-tool/wasm-pack-plugin": "^1.6",
     "clean-webpack-plugin": "^4.0.0",
