@@ -35,7 +35,7 @@
     "wasm-pack": "^0.10",
     "webpack": "^5.62",
     "webpack-cli": "^4.9",
-    "webpack-dev-server": "^4.4",
+    "webpack-dev-server": "^4.13",
     "webpack-merge": "^5.8",
     "webpack-shell-plugin-next": "^2.2"
   }
